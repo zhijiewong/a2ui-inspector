@@ -65,4 +65,34 @@ describe("SessionStore", () => {
     s.replace([]);
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it("unsubscribe() stops onAppend listeners from firing", () => {
+    const s = new SessionStore();
+    const listener = vi.fn();
+    const off = s.onAppend(listener);
+    s.appendMessage(msg("a"));
+    off();
+    s.appendMessage(msg("b"));
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("unsubscribe() stops onReplace listeners from firing", () => {
+    const s = new SessionStore();
+    const listener = vi.fn();
+    const off = s.onReplace(listener);
+    s.replace([]);
+    off();
+    s.replace([]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("replace() does NOT trigger onAppend listeners", () => {
+    const s = new SessionStore();
+    const appendListener = vi.fn();
+    s.onAppend(appendListener);
+    s.replace([
+      { tick: 0, ts: 1, direction: "agent->client", message: msg("x") },
+    ]);
+    expect(appendListener).not.toHaveBeenCalled();
+  });
 });

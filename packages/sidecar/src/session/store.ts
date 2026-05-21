@@ -12,6 +12,7 @@ export class SessionStore {
     return this.log.length;
   }
 
+  /** Returns the live backing array typed as readonly. Do not mutate. */
   entries(): readonly SessionEntry[] {
     return this.log;
   }
