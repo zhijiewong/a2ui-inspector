@@ -9,9 +9,12 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "dev": "pnpm --filter sidecar dev"
+    "dev": "pnpm --filter sidecar dev",
+    "e2e": "playwright test --config=tests/e2e/playwright.config.ts",
+    "e2e:install": "playwright install chromium"
   },
   "devDependencies": {
+    "@playwright/test": "^1.44.0",
     "typescript": "^5.4.0"
   }
 }
