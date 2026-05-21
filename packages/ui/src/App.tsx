@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Toolbar } from "./components/Toolbar.js";
+import { Timeline } from "./panels/Timeline.js";
 import { useSessionStore } from "./store/session.js";
 import { bridge } from "./transport/bridgeClient.js";
 
@@ -27,7 +28,9 @@ export default function App() {
         upstreamStatus={upstreamDetail ? `${upstreamStatus} (${upstreamDetail})` : upstreamStatus}
       />
       <main className="flex flex-1 overflow-hidden">
-        <aside className="w-72 border-r border-neutral-800 p-2 mono text-xs">timeline (Task 11)</aside>
+        <aside className="w-72 overflow-y-auto border-r border-neutral-800">
+          <Timeline />
+        </aside>
         <section className="flex-1 p-2">preview (Task 12)</section>
       </main>
     </div>
