@@ -22,13 +22,13 @@ export const EventSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("messageReceived"),
     tick: z.number().int().nonnegative(),
-    ts: z.number(),
+    ts: z.number().finite().nonnegative(),
     message: A2UIMessageSchema,
   }),
   z.object({
     kind: z.literal("actionSent"),
     tick: z.number().int().nonnegative(),
-    ts: z.number(),
+    ts: z.number().finite().nonnegative(),
     action: A2UIActionSchema,
   }),
   z.object({

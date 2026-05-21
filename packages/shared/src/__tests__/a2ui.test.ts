@@ -41,4 +41,18 @@ describe("A2UIMessageSchema", () => {
   it("rejects missing surfaceId", () => {
     expect(() => A2UIMessageSchema.parse({ version: "v0.9", createSurface: {} })).toThrow();
   });
+
+  it("rejects message containing multiple variants", () => {
+    expect(() =>
+      A2UIMessageSchema.parse({
+        version: "v0.9",
+        createSurface: { surfaceId: "a" },
+        deleteSurface: { surfaceId: "a" },
+      })
+    ).toThrow();
+  });
+
+  it("rejects message containing no variant", () => {
+    expect(() => A2UIMessageSchema.parse({ version: "v0.9" })).toThrow();
+  });
 });

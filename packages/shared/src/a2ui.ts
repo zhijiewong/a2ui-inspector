@@ -27,16 +27,25 @@ const DeleteSurface = z.object({
   surfaceId: z.string(),
 });
 
-export const A2UIMessageSchema = z.object({
-  version: z.literal("v0.9"),
-}).and(
-  z.union([
-    z.object({ createSurface: CreateSurface }),
-    z.object({ updateComponents: UpdateComponents }),
-    z.object({ updateDataModel: UpdateDataModel }),
-    z.object({ deleteSurface: DeleteSurface }),
-  ])
-);
+export const A2UIMessageSchema = z
+  .object({
+    version: z.literal("v0.9"),
+  })
+  .and(
+    z.union([
+      z.object({ createSurface: CreateSurface }).passthrough(),
+      z.object({ updateComponents: UpdateComponents }).passthrough(),
+      z.object({ updateDataModel: UpdateDataModel }).passthrough(),
+      z.object({ deleteSurface: DeleteSurface }).passthrough(),
+    ])
+  )
+  .refine(
+    (m) => {
+      const keys = ["createSurface", "updateComponents", "updateDataModel", "deleteSurface"] as const;
+      return keys.filter((k) => k in m).length === 1;
+    },
+    { message: "A2UI message must contain exactly one of createSurface/updateComponents/updateDataModel/deleteSurface" }
+  );
 
 export type A2UIMessage = z.infer<typeof A2UIMessageSchema>;
 

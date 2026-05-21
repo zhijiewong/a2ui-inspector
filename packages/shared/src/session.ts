@@ -4,7 +4,7 @@ import { A2UIActionSchema, A2UIMessageSchema } from "./a2ui.js";
 export const SessionEntrySchema = z
   .object({
     tick: z.number().int().nonnegative(),
-    ts: z.number(),
+    ts: z.number().finite().nonnegative(),
     direction: z.enum(["agent->client", "client->agent"]),
     message: A2UIMessageSchema.optional(),
     action: A2UIActionSchema.optional(),
