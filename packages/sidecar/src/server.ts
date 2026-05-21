@@ -23,7 +23,8 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
   });
 
   const here = dirname(fileURLToPath(import.meta.url));
-  const uiDist = opts.uiDistDir ?? resolve(here, "../../ui/dist");
+  const uiDist = opts.uiDistDir
+    ?? (existsSync(resolve(here, "../../ui/dist")) ? resolve(here, "../../ui/dist") : resolve(here, "../ui-dist"));
   if (existsSync(uiDist)) {
     await app.register(fastifyStatic, { root: uiDist, prefix: "/" });
   } else {

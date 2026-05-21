@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/server.js",
   "bin": { "a2ui-inspector": "dist/bin.js" },
-  "files": ["dist", "../ui/dist"],
+  "files": ["dist", "ui-dist"],
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/bin.ts",
@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'lint: noop'"
+    "lint": "echo 'lint: noop'",
+    "prepublishOnly": "node -e \"import('node:fs').then(fs => { fs.cpSync('../ui/dist', 'ui-dist', { recursive: true }); })\""
   },
   "dependencies": {
     "@a2ui-inspector/shared": "workspace:*",
