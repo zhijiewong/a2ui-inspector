@@ -1,14 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Toolbar } from "./components/Toolbar.js";
 import { MainPaneTabs } from "./components/MainPaneTabs.js";
 import { ActionInjector } from "./components/ActionInjector.js";
+import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { Timeline } from "./panels/Timeline.js";
 import { Preview } from "./panels/Preview.js";
 import { ComponentTree } from "./panels/ComponentTree.js";
 import { Diff } from "./panels/Diff.js";
 import { DataModel } from "./panels/DataModel.js";
+import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts.js";
 import { useSessionStore } from "./store/session.js";
 import { useMainPaneStore } from "./store/mainPane.js";
+import { useCommandPaletteStore } from "./store/commandPalette.js";
 import { useThemeStore } from "./store/theme.js";
 import { bridge } from "./transport/bridgeClient.js";
 
@@ -16,6 +19,9 @@ export default function App() {
   const upstreamStatus = useSessionStore((s) => s.upstreamStatus);
   const upstreamDetail = useSessionStore((s) => s.upstreamDetail);
   const mainTab = useMainPaneStore((s) => s.tab);
+  const setTab = useMainPaneStore((s) => s.setTab);
+  const togglePalette = useCommandPaletteStore((s) => s.toggle);
+  const toggleTheme = useThemeStore((s) => s.toggle);
   const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bridge.connect(); }, []);
@@ -43,15 +49,45 @@ export default function App() {
     };
   }, []);
 
+  const handleConnect = useCallback(() => {
+    const url = window.prompt("Upstream URL — ws:// or wss:// for WebSocket, http:// or https:// for SSE:");
+    if (!url) return;
+    const transport = /^wss?:\/\//i.test(url) ? "websocket" : "sse";
+    bridge.send({ kind: "connectUpstream", config: { transport, url } });
+  }, []);
+
+  const handleLoadFile = useCallback(() => {
+    const path = window.prompt("Path to .a2ui-session.jsonl on the host:");
+    if (path) bridge.send({ kind: "loadFile", path });
+  }, []);
+
+  const handleSave = useCallback(() => {
+    const path = window.prompt("Save session to:");
+    if (path) bridge.send({ kind: "saveSession", path });
+  }, []);
+
+  useGlobalShortcuts({
+    onSave: handleSave,
+    onOpenFile: handleLoadFile,
+    onTogglePalette: togglePalette,
+    onTab: setTab,
+  });
+
+  const paletteCommands: PaletteCommand[] = [
+    { id: "connect", label: "Connect to upstream", run: handleConnect },
+    { id: "load", label: "Load session file", run: handleLoadFile },
+    { id: "save", label: "Save session", run: handleSave },
+    { id: "clear", label: "Clear session", run: () => bridge.send({ kind: "clear" }) },
+    { id: "tab-preview", label: "Show Preview tab", run: () => setTab("preview") },
+    { id: "tab-tree", label: "Show Tree tab", run: () => setTab("tree") },
+    { id: "tab-diff", label: "Show Diff tab", run: () => setTab("diff") },
+    { id: "theme", label: "Toggle light/dark theme", run: toggleTheme },
+  ];
+
   return (
     <div ref={dropRef} className="flex h-screen flex-col">
       <Toolbar
-        onConnect={() => {
-          const url = window.prompt("Upstream URL — ws:// or wss:// for WebSocket, http:// or https:// for SSE:");
-          if (!url) return;
-          const transport = /^wss?:\/\//i.test(url) ? "websocket" : "sse";
-          bridge.send({ kind: "connectUpstream", config: { transport, url } });
-        }}
+        onConnect={handleConnect}
         onProxy={() => {
           const portStr = window.prompt("Proxy listen port (e.g. 9100):");
           if (!portStr) return;
@@ -63,14 +99,8 @@ export default function App() {
           const target = window.prompt("Target agent WebSocket URL (ws:// or wss://):");
           if (target) bridge.send({ kind: "startProxy", port, target });
         }}
-        onLoadFile={() => {
-          const path = window.prompt("Path to .a2ui-session.jsonl on the host:");
-          if (path) bridge.send({ kind: "loadFile", path });
-        }}
-        onSave={() => {
-          const path = window.prompt("Save session to:");
-          if (path) bridge.send({ kind: "saveSession", path });
-        }}
+        onLoadFile={handleLoadFile}
+        onSave={handleSave}
         upstreamStatus={upstreamDetail ? `${upstreamStatus} (${upstreamDetail})` : upstreamStatus}
       />
       <main className="flex flex-1 overflow-hidden">
@@ -88,6 +118,7 @@ export default function App() {
           <ActionInjector onInject={(action) => bridge.send({ kind: "injectAction", action })} />
         </section>
       </main>
+      <CommandPalette commands={paletteCommands} />
     </div>
   );
 }
