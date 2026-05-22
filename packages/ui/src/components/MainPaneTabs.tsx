@@ -10,7 +10,7 @@ export function MainPaneTabs() {
   const tab = useMainPaneStore((s) => s.tab);
   const setTab = useMainPaneStore((s) => s.setTab);
   return (
-    <div className="flex border-b border-neutral-800">
+    <div className="flex border-b border-edge">
       {TABS.map((t) => (
         <button
           key={t.id}
@@ -19,7 +19,7 @@ export function MainPaneTabs() {
             "px-3 py-1 text-xs border-b-2 " +
             (tab === t.id
               ? "border-emerald-400 text-emerald-300"
-              : "border-transparent text-neutral-400 hover:text-neutral-200")
+              : "border-transparent text-ink-muted hover:text-ink")
           }
         >
           {t.label}

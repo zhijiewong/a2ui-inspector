@@ -29,7 +29,7 @@ function JsonNode({ value, path, name, changedPaths, depth }: JsonNodeProps) {
       <div
         data-testid={`json-leaf-${path}`}
         style={indent}
-        className={"mono text-xs " + (changed ? "text-emerald-300" : "text-neutral-300")}
+        className={"mono text-xs " + (changed ? "text-emerald-300" : "text-ink")}
       >
         {name !== undefined && <span className="text-sky-400">{name}: </span>}
         <span>{formatPrimitive(value)}</span>
@@ -45,12 +45,12 @@ function JsonNode({ value, path, name, changedPaths, depth }: JsonNodeProps) {
     <div>
       <div
         style={indent}
-        className="mono text-xs cursor-pointer text-neutral-400 hover:text-neutral-200"
+        className="mono text-xs cursor-pointer text-ink-muted hover:text-ink"
         onClick={() => setOpen((o) => !o)}
       >
         <span>{open ? "▾" : "▸"} </span>
         {name !== undefined ? <span className="text-sky-400">{name}</span> : <span>root</span>}
-        <span className="text-neutral-600"> {Array.isArray(value) ? `[${entries.length}]` : `{${entries.length}}`}</span>
+        <span className="text-ink-faint"> {Array.isArray(value) ? `[${entries.length}]` : `{${entries.length}}`}</span>
       </div>
       {open &&
         entries.map(([k, v]) => (

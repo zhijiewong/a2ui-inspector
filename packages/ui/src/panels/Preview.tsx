@@ -3,6 +3,7 @@ import { A2uiSurface } from "@a2ui/react/v0_9";
 import { useSessionStore } from "../store/session.js";
 import { useTimelineStore } from "../store/timeline.js";
 import { useSelectionStore } from "../store/selection.js";
+import { usePreviewStore, FRAME_WIDTHS, type DeviceFrame } from "../store/preview.js";
 import { stateAtTick } from "../replay/processor.js";
 
 class SurfaceErrorBoundary extends Component<{ surfaceId: string; children: ReactNode }, { error?: Error }> {
@@ -27,13 +28,15 @@ export function Preview() {
   const scrub = useTimelineStore((s) => s.scrubTick);
   const selectedSurface = useSelectionStore((s) => s.surfaceId);
   const selectSurface = useSelectionStore((s) => s.selectSurface);
+  const frame = usePreviewStore((s) => s.frame);
+  const setFrame = usePreviewStore((s) => s.setFrame);
 
   const tick = scrub === "head" ? entries.length - 1 : scrub;
   const { surfaces } = useMemo(() => stateAtTick(entries, tick), [entries, tick]);
   const surfaceList = Array.from(surfaces.entries());
 
   if (surfaceList.length === 0) {
-    return <div className="p-6 text-sm text-neutral-500">Waiting for messages. Connect to an upstream or load a .jsonl session.</div>;
+    return <div className="p-6 text-sm text-ink-muted">Waiting for messages. Connect to an upstream or load a .jsonl session.</div>;
   }
 
   const activeId = surfaceList.find(([id]) => id === selectedSurface)?.[0] ?? surfaceList[0]![0];
@@ -42,7 +45,7 @@ export function Preview() {
   return (
     <div className="flex h-full flex-col" data-testid="preview-pane">
       {surfaceList.length > 1 && (
-        <div className="flex border-b border-neutral-800">
+        <div className="flex border-b border-edge">
           {surfaceList.map(([id]) => (
             <button
               key={id}
@@ -51,7 +54,7 @@ export function Preview() {
                 "px-3 py-1 mono text-xs border-b-2 " +
                 (id === activeId
                   ? "border-sky-400 text-sky-300"
-                  : "border-transparent text-neutral-400 hover:text-neutral-200")
+                  : "border-transparent text-ink-muted hover:text-ink")
               }
             >
               {id}
@@ -59,13 +62,32 @@ export function Preview() {
           ))}
         </div>
       )}
+      <div className="flex items-center gap-1 border-b border-edge px-2 py-1">
+        {(["mobile", "tablet", "desktop"] as DeviceFrame[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFrame(f)}
+            className={
+              "mono rounded px-2 py-0.5 text-xs " +
+              (frame === f ? "bg-raised text-ink" : "text-ink-muted hover:bg-surface")
+            }
+          >
+            {f}
+          </button>
+        ))}
+      </div>
       <div className="flex-1 overflow-auto p-3">
-        <div className="rounded border border-neutral-800 p-2">
-          <div className="mb-1 mono text-xs text-neutral-500">surface: {activeId}</div>
-          <div className="rounded bg-neutral-900 p-2">
-            <SurfaceErrorBoundary surfaceId={activeId}>
-              <A2uiSurface key={activeId} surface={activeSurface as never} />
-            </SurfaceErrorBoundary>
+        <div
+          className="mx-auto"
+          style={{ maxWidth: FRAME_WIDTHS[frame] ? `${FRAME_WIDTHS[frame]}px` : undefined }}
+        >
+          <div className="rounded border border-edge p-2">
+            <div className="mb-1 mono text-xs text-ink-muted">surface: {activeId}</div>
+            <div className="rounded bg-surface p-2">
+              <SurfaceErrorBoundary surfaceId={activeId}>
+                <A2uiSurface key={activeId} surface={activeSurface as never} />
+              </SurfaceErrorBoundary>
+            </div>
           </div>
         </div>
       </div>

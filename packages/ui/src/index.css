@@ -2,5 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app: 10 10 10;
+  --surface: 23 23 23;
+  --raised: 38 38 38;
+  --edge: 38 38 38;
+  --edge-strong: 64 64 64;
+  --ink: 245 245 245;
+  --ink-muted: 163 163 163;
+  --ink-faint: 115 115 115;
+}
+
+:root.light {
+  --app: 250 250 250;
+  --surface: 245 245 245;
+  --raised: 229 229 229;
+  --edge: 212 212 212;
+  --edge-strong: 163 163 163;
+  --ink: 23 23 23;
+  --ink-muted: 82 82 82;
+  --ink-faint: 115 115 115;
+}
+
 body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
 .mono { font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace; }

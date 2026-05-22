@@ -28,18 +28,18 @@ export function Diff() {
   }, [entries, tick, selectedSurface]);
 
   if (!diff || !currView) {
-    return <div className="p-3 text-xs text-neutral-500">Nothing to diff at this tick.</div>;
+    return <div className="p-3 text-xs text-ink-muted">Nothing to diff at this tick.</div>;
   }
 
   return (
     <div className="overflow-auto p-3 mono text-xs">
-      <div className="mb-2 text-neutral-500">
+      <div className="mb-2 text-ink-muted">
         diff · tick {tick - 1} → {tick} · surface: {currView.surfaceId}
       </div>
       <Section label="Added components" items={diff.addedComponents} className="text-emerald-300" />
       <Section label="Removed components" items={diff.removedComponents} className="text-red-300" />
       <Section label="Changed components" items={diff.changedComponents} className="text-amber-300" />
-      <div className="mt-3 text-neutral-400">Data model (changed paths highlighted):</div>
+      <div className="mt-3 text-ink-muted">Data model (changed paths highlighted):</div>
       <JsonTree value={currView.dataModel ?? {}} changedPaths={diff.changedPaths} />
     </div>
   );
@@ -48,9 +48,9 @@ export function Diff() {
 function Section({ label, items, className }: { label: string; items: string[]; className: string }) {
   return (
     <div className="mb-1">
-      <span className="text-neutral-500">{label}: </span>
+      <span className="text-ink-muted">{label}: </span>
       {items.length === 0 ? (
-        <span className="text-neutral-600">none</span>
+        <span className="text-ink-faint">none</span>
       ) : (
         items.map((id) => (
           <span key={id} className={"mr-2 " + className}>
