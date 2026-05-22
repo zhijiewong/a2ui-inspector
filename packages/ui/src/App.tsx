@@ -1,13 +1,19 @@
 import { useEffect, useRef } from "react";
 import { Toolbar } from "./components/Toolbar.js";
+import { MainPaneTabs } from "./components/MainPaneTabs.js";
 import { Timeline } from "./panels/Timeline.js";
 import { Preview } from "./panels/Preview.js";
+import { ComponentTree } from "./panels/ComponentTree.js";
+import { Diff } from "./panels/Diff.js";
+import { DataModel } from "./panels/DataModel.js";
 import { useSessionStore } from "./store/session.js";
+import { useMainPaneStore } from "./store/mainPane.js";
 import { bridge } from "./transport/bridgeClient.js";
 
 export default function App() {
   const upstreamStatus = useSessionStore((s) => s.upstreamStatus);
   const upstreamDetail = useSessionStore((s) => s.upstreamDetail);
+  const mainTab = useMainPaneStore((s) => s.tab);
   const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bridge.connect(); }, []);
@@ -50,7 +56,17 @@ export default function App() {
       />
       <main className="flex flex-1 overflow-hidden">
         <aside className="w-72 overflow-y-auto border-r border-neutral-800"><Timeline /></aside>
-        <section className="flex-1 overflow-auto"><Preview /></section>
+        <section className="flex flex-1 flex-col overflow-hidden">
+          <MainPaneTabs />
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex-1 overflow-auto">
+              {mainTab === "preview" && <Preview />}
+              {mainTab === "tree" && <ComponentTree />}
+              {mainTab === "diff" && <Diff />}
+            </div>
+            <aside className="w-80 overflow-auto border-l border-neutral-800"><DataModel /></aside>
+          </div>
+        </section>
       </main>
     </div>
   );
