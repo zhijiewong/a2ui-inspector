@@ -33,6 +33,9 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<BuiltS
 
   app.get("/bridge", { websocket: true }, (socket, request) => {
     const url = new URL(request.url ?? "/bridge", "http://localhost");
+    // Plain `!==` compare: not constant-time, but acceptable for a 128-bit
+    // random token on a localhost devtool — timing attacks aren't a realistic
+    // vector here.
     if (url.searchParams.get("token") !== token) {
       socket.close(4401, "unauthorized");
       return;
