@@ -7,6 +7,7 @@ interface SessionState {
   upstreamDetail?: string;
   diagnostics: Array<{ level: "warn" | "error"; message: string; ts: number }>;
   applyEvent: (e: Event) => void;
+  loadEntries: (entries: SessionEntry[]) => void;
   reset: () => void;
 }
 
@@ -33,5 +34,6 @@ export const useSessionStore = create<SessionState>((set) => ({
           return { diagnostics: [...s.diagnostics, { level: e.level, message: e.message, ts: Date.now() }] };
       }
     }),
+  loadEntries: (entries) => set({ entries }),
   reset: () => set({ entries: [], upstreamStatus: "idle", upstreamDetail: undefined, diagnostics: [] }),
 }));
