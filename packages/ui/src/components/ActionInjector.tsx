@@ -33,8 +33,8 @@ export function ActionInjector({ onInject }: ActionInjectorProps) {
   };
 
   return (
-    <div className="border-t border-neutral-800 p-2 mono text-xs">
-      <div className="mb-1 text-neutral-500">Inject action</div>
+    <div className="border-t border-edge p-2 mono text-xs">
+      <div className="mb-1 text-ink-muted">Inject action</div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-1">
           surface
@@ -42,7 +42,7 @@ export function ActionInjector({ onInject }: ActionInjectorProps) {
             aria-label="surface"
             value={surfaceId}
             onChange={(e) => setSurfaceId(e.target.value)}
-            className="w-24 rounded border border-neutral-700 bg-neutral-900 px-1"
+            className="w-24 rounded border border-edge-strong bg-surface px-1"
           />
         </label>
         <label className="flex items-center gap-1">
@@ -51,7 +51,7 @@ export function ActionInjector({ onInject }: ActionInjectorProps) {
             aria-label="component"
             value={componentId}
             onChange={(e) => setComponentId(e.target.value)}
-            className="w-24 rounded border border-neutral-700 bg-neutral-900 px-1"
+            className="w-24 rounded border border-edge-strong bg-surface px-1"
           />
         </label>
         <label className="flex items-center gap-1">
@@ -60,7 +60,7 @@ export function ActionInjector({ onInject }: ActionInjectorProps) {
             aria-label="kind"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="rounded border border-neutral-700 bg-neutral-900 px-1"
+            className="rounded border border-edge-strong bg-surface px-1"
           >
             {KINDS.map((k) => (
               <option key={k} value={k}>{k}</option>
@@ -74,12 +74,12 @@ export function ActionInjector({ onInject }: ActionInjectorProps) {
             value={payloadText}
             onChange={(e) => setPayloadText(e.target.value)}
             placeholder='{"text":"…"}'
-            className="w-40 rounded border border-neutral-700 bg-neutral-900 px-1"
+            className="w-40 rounded border border-edge-strong bg-surface px-1"
           />
         </label>
         <button
           onClick={fire}
-          className="rounded border border-neutral-700 px-2 py-0.5 hover:bg-neutral-800"
+          className="rounded border border-edge-strong px-2 py-0.5 hover:bg-raised"
         >
           Inject
         </button>

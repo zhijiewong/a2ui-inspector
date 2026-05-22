@@ -20,7 +20,7 @@ export function ComponentTree() {
   }, [entries, tick]);
 
   if (views.length === 0) {
-    return <div className="p-4 text-xs text-neutral-500">No surfaces at this tick.</div>;
+    return <div className="p-4 text-xs text-ink-muted">No surfaces at this tick.</div>;
   }
 
   const activeView: SurfaceView = views.find((v) => v.surfaceId === selectedSurface) ?? views[0]!;
@@ -38,13 +38,13 @@ export function ComponentTree() {
             onSelect={(cid) => selectComponent(activeView.surfaceId, cid)}
           />
         ) : (
-          <div className="text-xs text-neutral-500">Surface has no root component yet.</div>
+          <div className="text-xs text-ink-muted">Surface has no root component yet.</div>
         )}
       </div>
       {selectedNode && (
-        <div className="border-t border-neutral-800 p-2">
-          <div className="mono mb-1 text-xs text-neutral-400">
-            component: {selectedNode.type} <span className="text-neutral-600">#{selectedNode.id}</span>
+        <div className="border-t border-edge p-2">
+          <div className="mono mb-1 text-xs text-ink-muted">
+            component: {selectedNode.type} <span className="text-ink-faint">#{selectedNode.id}</span>
           </div>
           <JsonTree value={selectedNode.props} />
         </div>
@@ -78,10 +78,10 @@ function TreeNode({ view, id, depth, selectedId, onSelect }: TreeNodeProps) {
         onClick={() => onSelect(id)}
         className={
           "mono cursor-pointer text-xs px-1 " +
-          (isSelected ? "bg-neutral-800 text-emerald-300" : "hover:bg-neutral-900 text-neutral-300")
+          (isSelected ? "bg-raised text-emerald-300" : "hover:bg-surface text-ink")
         }
       >
-        <span className="text-neutral-500">#{id}</span> <span>{node.type}</span>
+        <span className="text-ink-muted">#{id}</span> <span>{node.type}</span>
       </div>
       {node.childIds.map((childId) => (
         <TreeNode key={childId} view={view} id={childId} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />

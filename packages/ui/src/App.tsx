@@ -9,6 +9,7 @@ import { Diff } from "./panels/Diff.js";
 import { DataModel } from "./panels/DataModel.js";
 import { useSessionStore } from "./store/session.js";
 import { useMainPaneStore } from "./store/mainPane.js";
+import { useThemeStore } from "./store/theme.js";
 import { bridge } from "./transport/bridgeClient.js";
 
 export default function App() {
@@ -18,6 +19,10 @@ export default function App() {
   const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bridge.connect(); }, []);
+
+  useEffect(() => {
+    useThemeStore.getState().applyTheme();
+  }, []);
 
   useEffect(() => {
     const el = dropRef.current;
@@ -69,7 +74,7 @@ export default function App() {
         upstreamStatus={upstreamDetail ? `${upstreamStatus} (${upstreamDetail})` : upstreamStatus}
       />
       <main className="flex flex-1 overflow-hidden">
-        <aside className="w-72 overflow-y-auto border-r border-neutral-800"><Timeline /></aside>
+        <aside className="w-72 overflow-y-auto border-r border-edge"><Timeline /></aside>
         <section className="flex flex-1 flex-col overflow-hidden">
           <MainPaneTabs />
           <div className="flex flex-1 overflow-hidden">
@@ -78,7 +83,7 @@ export default function App() {
               {mainTab === "tree" && <ComponentTree />}
               {mainTab === "diff" && <Diff />}
             </div>
-            <aside className="w-80 overflow-auto border-l border-neutral-800"><DataModel /></aside>
+            <aside className="w-80 overflow-auto border-l border-edge"><DataModel /></aside>
           </div>
           <ActionInjector onInject={(action) => bridge.send({ kind: "injectAction", action })} />
         </section>

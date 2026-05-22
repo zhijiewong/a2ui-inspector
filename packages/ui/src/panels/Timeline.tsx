@@ -49,11 +49,11 @@ export function Timeline() {
             className={
               "cursor-pointer border-l-2 px-2 py-1 " +
               (isActive
-                ? "border-emerald-400 bg-neutral-900 text-emerald-300"
-                : "border-transparent hover:bg-neutral-900")
+                ? "border-emerald-400 bg-surface text-emerald-300"
+                : "border-transparent hover:bg-surface")
             }
           >
-            <span className="mr-2 text-neutral-500">#{e.tick}</span>
+            <span className="mr-2 text-ink-muted">#{e.tick}</span>
             <span>{kindOf(e)}</span>
             {e.direction === "client->agent" ? <span className="ml-1 text-amber-400">←</span> : null}
           </li>

@@ -18,14 +18,14 @@ export function DataModel() {
   }, [entries, tick]);
 
   if (views.length === 0) {
-    return <div className="p-3 text-xs text-neutral-500">No data model at this tick.</div>;
+    return <div className="p-3 text-xs text-ink-muted">No data model at this tick.</div>;
   }
 
   const view = views.find((v) => v.surfaceId === selectedSurface) ?? views[0]!;
 
   return (
     <div className="overflow-auto p-2">
-      <div className="mono mb-1 text-xs text-neutral-500">data model · surface: {view.surfaceId}</div>
+      <div className="mono mb-1 text-xs text-ink-muted">data model · surface: {view.surfaceId}</div>
       <JsonTree value={view.dataModel ?? {}} />
     </div>
   );
