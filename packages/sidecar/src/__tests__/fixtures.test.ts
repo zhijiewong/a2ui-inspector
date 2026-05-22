@@ -26,8 +26,11 @@ describe("example fixture recordings", () => {
   it("multi-surface.jsonl creates two distinct surfaces", async () => {
     const entries = await loadSession(resolve(RECORDINGS, "multi-surface.jsonl"));
     const created = entries
-      .map((e) => (e.message && "createSurface" in e.message ? e.message.createSurface.surfaceId : undefined))
-      .filter((s): s is string => s !== undefined);
+      .map((e) => {
+        const m = e.message as { createSurface?: { surfaceId?: string } } | undefined;
+        return m?.createSurface?.surfaceId;
+      })
+      .filter((s): s is string => typeof s === "string");
     expect(new Set(created)).toEqual(new Set(["main", "sidebar"]));
   });
 
