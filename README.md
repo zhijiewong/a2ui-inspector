@@ -40,6 +40,24 @@ npx a2ui-validate path/to/session.jsonl
 Exit code `0` = valid, `1` = validation errors found, `2` = usage error or
 unreadable file.
 
+## Sharing a session
+
+The **Share** button encodes the current session into a link — no server, no
+upload. The whole session is gzip-compressed into the URL fragment, so the data
+never leaves the link itself.
+
+Opening a share link replays the session read-only in the inspector (no sidecar
+needed). Links are generated against the public build at
+`https://zhijiewong.github.io/a2ui-inspector/`.
+
+A share link contains the **full session data, including anything sensitive in
+it** — treat it like the recording itself. Sessions larger than 256 KB encoded
+cannot be shared as a link; use **Save** to export the `.jsonl` file instead.
+
+> One-time repo setup for maintainers: enable Pages under
+> Settings → Pages → Source: **GitHub Actions**. The `Deploy Pages` workflow
+> publishes the UI on every push to `main`.
+
 ## Status
 
 v1 complete — Phases 1, 2a, 2b, 2c implemented.
