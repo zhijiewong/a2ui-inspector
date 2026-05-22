@@ -13,5 +13,7 @@ test("loads a recorded session and renders the timeline + preview", async ({ pag
   await expect(page.getByText(/createSurface/)).toBeVisible({ timeout: 5000 });
   await expect(page.getByText(/updateDataModel/)).toBeVisible();
 
-  await expect(page.getByText("Hello world")).toBeVisible({ timeout: 5000 });
+  await expect(
+    page.getByTestId("preview-pane").getByText("Hello world"),
+  ).toBeVisible({ timeout: 5000 });
 });
