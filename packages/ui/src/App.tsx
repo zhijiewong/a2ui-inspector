@@ -24,7 +24,7 @@ export default function App() {
   const toggleTheme = useThemeStore((s) => s.toggle);
   const dropRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { bridge.connect(); }, []);
+  useEffect(() => { void bridge.connect(); }, []);
 
   useEffect(() => {
     useThemeStore.getState().applyTheme();
