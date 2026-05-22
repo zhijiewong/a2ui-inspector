@@ -1,12 +1,16 @@
 import { CommandSchema, type Event } from "@a2ui-inspector/shared";
 import type { WebSocket } from "ws";
-import { connectWebSocketUpstream, type UpstreamHandle } from "./adapters/websocket.js";
+import { connectWebSocketUpstream } from "./adapters/websocket.js";
+import { connectSseUpstream } from "./adapters/sse.js";
+import { startWebSocketProxy, type RunningProxy } from "./adapters/proxy.js";
 import { loadFileIntoStore } from "./adapters/file.js";
 import { saveSession } from "./session/persistence.js";
 import type { SessionStore } from "./session/store.js";
+import type { UpstreamHandle } from "./adapters/types.js";
 
 export function registerBridgeClient(socket: WebSocket, store: SessionStore): void {
   let upstream: UpstreamHandle | undefined;
+  let proxy: RunningProxy | undefined;
 
   const send = (e: Event) => socket.send(JSON.stringify(e));
 
@@ -46,13 +50,37 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
     const cmd = result.data;
     switch (cmd.kind) {
       case "connectUpstream": {
-        if (cmd.config.transport === "websocket") {
-          upstream?.close();
-          upstream = await connectWebSocketUpstream(cmd.config.url, store, (s) =>
+        upstream?.close();
+        const onStatus = (s: { status: "connecting" | "connected" | "closed" | "error"; detail?: string }) =>
+          send({ kind: "upstreamStatus", status: s.status, detail: s.detail });
+        try {
+          if (cmd.config.transport === "websocket") {
+            upstream = await connectWebSocketUpstream(cmd.config.url, store, onStatus);
+          } else {
+            upstream = await connectSseUpstream(cmd.config.url, store, onStatus);
+          }
+        } catch (err) {
+          send({ kind: "diagnostic", level: "error", message: `connectUpstream failed: ${String((err as Error).message)}` });
+        }
+        return;
+      }
+      case "startProxy": {
+        proxy?.close();
+        try {
+          proxy = await startWebSocketProxy(cmd.port, cmd.target, store, (s) =>
             send({ kind: "upstreamStatus", status: s.status, detail: s.detail })
           );
+        } catch (err) {
+          send({ kind: "diagnostic", level: "error", message: `startProxy failed: ${String((err as Error).message)}` });
+        }
+        return;
+      }
+      case "injectAction": {
+        if (upstream?.send) {
+          upstream.send(cmd.action);
+          store.appendAction(cmd.action);
         } else {
-          send({ kind: "diagnostic", level: "warn", message: "SSE transport not implemented in Phase 1" });
+          send({ kind: "diagnostic", level: "warn", message: "injectAction: no sendable upstream connected (connect a WebSocket agent first)" });
         }
         return;
       }
@@ -76,6 +104,7 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
 
   socket.on("close", () => {
     upstream?.close();
+    proxy?.close();
     unsubAppend();
     unsubReplace();
   });

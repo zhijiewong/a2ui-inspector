@@ -46,4 +46,17 @@ describe("WebSocket upstream adapter", () => {
     expect(store.length).toBe(1);
     handle.close();
   });
+
+  it("send() forwards an action to the upstream as JSON", async () => {
+    const store = new SessionStore();
+    const received: string[] = [];
+    const handle = await connectWebSocketUpstream(`ws://localhost:${port}`, store, () => {});
+    await new Promise((r) => setTimeout(r, 20));
+    clientSocket!.on("message", (d) => received.push(d.toString()));
+    handle.send?.({ surfaceId: "main", componentId: "btn", kind: "tap" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(received.length).toBe(1);
+    expect(JSON.parse(received[0]!)).toEqual({ surfaceId: "main", componentId: "btn", kind: "tap" });
+    handle.close();
+  });
 });

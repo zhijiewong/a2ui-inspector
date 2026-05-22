@@ -18,6 +18,27 @@ describe("Bridge Command", () => {
   it("rejects unknown kind", () => {
     expect(() => CommandSchema.parse({ kind: "frobnicate" })).toThrow();
   });
+
+  it("parses injectAction", () => {
+    const cmd = {
+      kind: "injectAction",
+      action: { surfaceId: "main", componentId: "btn", kind: "tap" },
+    };
+    expect(() => CommandSchema.parse(cmd)).not.toThrow();
+  });
+
+  it("rejects injectAction with a malformed action", () => {
+    expect(() => CommandSchema.parse({ kind: "injectAction", action: { kind: "tap" } })).toThrow();
+  });
+
+  it("parses startProxy", () => {
+    const cmd = { kind: "startProxy", port: 9100, target: "ws://localhost:8000" };
+    expect(() => CommandSchema.parse(cmd)).not.toThrow();
+  });
+
+  it("rejects startProxy with a non-positive port", () => {
+    expect(() => CommandSchema.parse({ kind: "startProxy", port: 0, target: "ws://x" })).toThrow();
+  });
 });
 
 describe("Bridge Event", () => {

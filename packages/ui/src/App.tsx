@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Toolbar } from "./components/Toolbar.js";
 import { MainPaneTabs } from "./components/MainPaneTabs.js";
+import { ActionInjector } from "./components/ActionInjector.js";
 import { Timeline } from "./panels/Timeline.js";
 import { Preview } from "./panels/Preview.js";
 import { ComponentTree } from "./panels/ComponentTree.js";
@@ -41,8 +42,21 @@ export default function App() {
     <div ref={dropRef} className="flex h-screen flex-col">
       <Toolbar
         onConnect={() => {
-          const url = window.prompt("Upstream WS URL:");
-          if (url) bridge.send({ kind: "connectUpstream", config: { transport: "websocket", url } });
+          const url = window.prompt("Upstream URL — ws:// or wss:// for WebSocket, http:// or https:// for SSE:");
+          if (!url) return;
+          const transport = /^wss?:\/\//i.test(url) ? "websocket" : "sse";
+          bridge.send({ kind: "connectUpstream", config: { transport, url } });
+        }}
+        onProxy={() => {
+          const portStr = window.prompt("Proxy listen port (e.g. 9100):");
+          if (!portStr) return;
+          const port = Number(portStr);
+          if (!Number.isInteger(port) || port <= 0) {
+            window.alert("Port must be a positive integer.");
+            return;
+          }
+          const target = window.prompt("Target agent WebSocket URL (ws:// or wss://):");
+          if (target) bridge.send({ kind: "startProxy", port, target });
         }}
         onLoadFile={() => {
           const path = window.prompt("Path to .a2ui-session.jsonl on the host:");
@@ -66,6 +80,7 @@ export default function App() {
             </div>
             <aside className="w-80 overflow-auto border-l border-neutral-800"><DataModel /></aside>
           </div>
+          <ActionInjector onInject={(action) => bridge.send({ kind: "injectAction", action })} />
         </section>
       </main>
     </div>
