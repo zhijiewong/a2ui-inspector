@@ -17,9 +17,11 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # build first: workspace packages publish types from dist/, so shared
+      # must be compiled before typecheck/test can resolve @a2ui-inspector/shared
+      - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build
       - run: pnpm e2e:install
       - run: pnpm e2e
         if: matrix.node == '20'
