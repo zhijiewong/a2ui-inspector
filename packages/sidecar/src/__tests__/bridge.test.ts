@@ -8,10 +8,13 @@ describe("bridge", () => {
   let close: () => Promise<void>;
   let port: number;
   let store: SessionStore;
+  let bridgeToken: string;
 
   beforeEach(async () => {
     store = new SessionStore();
-    const app = await buildServer({ store });
+    const built = await buildServer({ store });
+    const app = built.app;
+    bridgeToken = built.token;
     const addr = await app.listen({ port: 0, host: "127.0.0.1" });
     port = Number(new URL(addr).port);
     close = async () => { await app.close(); };
@@ -21,7 +24,7 @@ describe("bridge", () => {
 
   it("emits messageReceived events to a connected browser client", async () => {
     const events: Event[] = [];
-    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge`);
+    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge?token=${bridgeToken}`);
     await new Promise<void>((r) => client.once("open", () => r()));
     client.on("message", (data) => events.push(JSON.parse(data.toString()) as Event));
 
@@ -33,7 +36,7 @@ describe("bridge", () => {
   });
 
   it("accepts a scrubTo command without effect on the sidecar store", async () => {
-    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge`);
+    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge?token=${bridgeToken}`);
     await new Promise<void>((r) => client.once("open", () => r()));
     client.send(JSON.stringify({ kind: "scrubTo", tick: 5 }));
     await new Promise((r) => setTimeout(r, 20));
@@ -43,7 +46,7 @@ describe("bridge", () => {
 
   it("injectAction with no upstream emits a diagnostic", async () => {
     const events: Event[] = [];
-    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge`);
+    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge?token=${bridgeToken}`);
     await new Promise<void>((r) => client.once("open", () => r()));
     client.on("message", (data) => events.push(JSON.parse(data.toString()) as Event));
     client.send(JSON.stringify({
@@ -62,7 +65,7 @@ describe("bridge", () => {
     const received: string[] = [];
     agent.on("connection", (s) => s.on("message", (d) => received.push(d.toString())));
 
-    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge`);
+    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge?token=${bridgeToken}`);
     await new Promise<void>((r) => client.once("open", () => r()));
     client.send(JSON.stringify({
       kind: "connectUpstream",
@@ -79,5 +82,20 @@ describe("bridge", () => {
     expect(store.entries().some((e) => e.action)).toBe(true);
     client.close();
     await new Promise<void>((r) => agent.close(() => r()));
+  });
+
+  it("rejects a /bridge connection with no token", async () => {
+    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge`);
+    const closeCode = await new Promise<number>((resolve) => {
+      client.once("close", (code) => resolve(code));
+      client.once("open", () => client.close());
+    });
+    expect(closeCode).toBe(4401);
+  });
+
+  it("serves the bridge token over /bridge-token", async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/bridge-token`);
+    const body = (await res.json()) as { token: string };
+    expect(body.token).toBe(bridgeToken);
   });
 });
