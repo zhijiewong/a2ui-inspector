@@ -1,0 +1,4 @@
+{"tick":0,"ts":1700000200000,"direction":"agent->client","message":{"version":"v0.9","createSurface":{"surfaceId":"main","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}}
+{"tick":1,"ts":1700000200100,"direction":"agent->client","message":{"version":"v0.9","createSurface":{"surfaceId":"sidebar","catalogId":"https://a2ui.org/specification/v0_9/basic_catalog.json"}}}
+{"tick":2,"ts":1700000200200,"direction":"agent->client","message":{"version":"v0.9","updateComponents":{"surfaceId":"main","components":[{"id":"root","component":"Text","text":{"path":"/heading"}}]}}}
+{"tick":3,"ts":1700000200300,"direction":"agent->client","message":{"version":"v0.9","updateComponents":{"surfaceId":"sidebar","components":[{"id":"root","component":"Text","text":{"path":"/label"}}]}}}
