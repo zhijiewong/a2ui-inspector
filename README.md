@@ -30,4 +30,4 @@ so it is reachable via the published port.
 
 ## Status
 
-Phase 1 MVP — in development.
+v1 complete — Phases 1, 2a, 2b, 2c implemented.

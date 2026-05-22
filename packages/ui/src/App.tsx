@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Toolbar } from "./components/Toolbar.js";
 import { MainPaneTabs } from "./components/MainPaneTabs.js";
 import { ActionInjector } from "./components/ActionInjector.js";
@@ -66,23 +66,30 @@ export default function App() {
     if (path) bridge.send({ kind: "saveSession", path });
   }, []);
 
-  useGlobalShortcuts({
-    onSave: handleSave,
-    onOpenFile: handleLoadFile,
-    onTogglePalette: togglePalette,
-    onTab: setTab,
-  });
+  const shortcutHandlers = useMemo(
+    () => ({
+      onSave: handleSave,
+      onOpenFile: handleLoadFile,
+      onTogglePalette: togglePalette,
+      onTab: setTab,
+    }),
+    [handleSave, handleLoadFile, togglePalette, setTab]
+  );
+  useGlobalShortcuts(shortcutHandlers);
 
-  const paletteCommands: PaletteCommand[] = [
-    { id: "connect", label: "Connect to upstream", run: handleConnect },
-    { id: "load", label: "Load session file", run: handleLoadFile },
-    { id: "save", label: "Save session", run: handleSave },
-    { id: "clear", label: "Clear session", run: () => bridge.send({ kind: "clear" }) },
-    { id: "tab-preview", label: "Show Preview tab", run: () => setTab("preview") },
-    { id: "tab-tree", label: "Show Tree tab", run: () => setTab("tree") },
-    { id: "tab-diff", label: "Show Diff tab", run: () => setTab("diff") },
-    { id: "theme", label: "Toggle light/dark theme", run: toggleTheme },
-  ];
+  const paletteCommands: PaletteCommand[] = useMemo(
+    () => [
+      { id: "connect", label: "Connect to upstream", run: handleConnect },
+      { id: "load", label: "Load session file", run: handleLoadFile },
+      { id: "save", label: "Save session", run: handleSave },
+      { id: "clear", label: "Clear session", run: () => bridge.send({ kind: "clear" }) },
+      { id: "tab-preview", label: "Show Preview tab", run: () => setTab("preview") },
+      { id: "tab-tree", label: "Show Tree tab", run: () => setTab("tree") },
+      { id: "tab-diff", label: "Show Diff tab", run: () => setTab("diff") },
+      { id: "theme", label: "Toggle light/dark theme", run: toggleTheme },
+    ],
+    [handleConnect, handleLoadFile, handleSave, setTab, toggleTheme]
+  );
 
   return (
     <div ref={dropRef} className="flex h-screen flex-col">
