@@ -32,6 +32,7 @@ export default function App() {
   const dropRef = useRef<HTMLDivElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [shareError, setShareError] = useState<string | undefined>();
 
   // Boot: if the URL carries a #share= fragment, replay it read-only and skip
   // the sidecar. Otherwise connect to the bridge as usual.
@@ -49,7 +50,7 @@ export default function App() {
             err instanceof ShareDecodeError
               ? "This share link is corrupt or invalid."
               : `Failed to open share link: ${String((err as Error).message)}`;
-          useSessionStore.getState().applyEvent({ kind: "diagnostic", level: "error", message });
+          setShareError(message);
           void bridge.connect();
         });
     } else {
@@ -150,6 +151,17 @@ export default function App() {
           <button
             onClick={() => setBannerDismissed(true)}
             className="rounded border border-edge px-2 py-0.5 hover:bg-raised"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {shareError && (
+        <div className="flex items-center justify-between border-b border-edge bg-surface px-3 py-1 text-xs text-red-300">
+          <span>{shareError}</span>
+          <button
+            onClick={() => setShareError(undefined)}
+            className="rounded border border-edge px-2 py-0.5 text-ink-muted hover:bg-raised"
           >
             Dismiss
           </button>

@@ -30,3 +30,13 @@ test("share a loaded session and reopen it from the link", async ({ page }) => {
     page.getByTestId("preview-pane").getByText("Hello world"),
   ).toBeVisible({ timeout: 5000 });
 });
+
+test("a corrupt share link shows an error and falls through to normal startup", async ({ page }) => {
+  await page.goto("about:blank");
+  await page.goto("/#share=this-is-not-a-valid-fragment");
+  // The corrupt-link error strip is shown.
+  await expect(page.getByText(/corrupt or invalid/i)).toBeVisible({ timeout: 5000 });
+  // Normal startup still happened — the app is usable, not stuck in shared view.
+  await expect(page.getByText("A2UI Inspector")).toBeVisible();
+  await expect(page.getByText(/Viewing a shared session/)).toHaveCount(0);
+});
