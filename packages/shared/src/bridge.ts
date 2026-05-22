@@ -12,6 +12,8 @@ export const CommandSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("saveSession"), path: z.string() }),
   z.object({ kind: z.literal("scrubTo"), tick: z.number().int().nonnegative() }),
   z.object({ kind: z.literal("clear") }),
+  z.object({ kind: z.literal("injectAction"), action: A2UIActionSchema }),
+  z.object({ kind: z.literal("startProxy"), port: z.number().int().positive(), target: z.string().url() }),
 ]);
 
 export type Command = z.infer<typeof CommandSchema>;
