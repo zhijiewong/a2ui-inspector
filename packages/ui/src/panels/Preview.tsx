@@ -1,9 +1,10 @@
 import { Component, type ErrorInfo, type ReactNode, useMemo } from "react";
-import { A2uiSurface } from "@a2ui/react/v0_9";
 import { useSessionStore } from "../store/session.js";
 import { useTimelineStore } from "../store/timeline.js";
 import { useSelectionStore } from "../store/selection.js";
 import { usePreviewStore, FRAME_WIDTHS, type DeviceFrame } from "../store/preview.js";
+import { usePreviewRendererStore } from "../store/previewRenderer.js";
+import { PREVIEW_RENDERERS, getRenderer } from "../renderers/index.js";
 import { stateAtTick } from "../replay/processor.js";
 
 class SurfaceErrorBoundary extends Component<{ surfaceId: string; children: ReactNode }, { error?: Error }> {
@@ -30,6 +31,9 @@ export function Preview() {
   const selectSurface = useSelectionStore((s) => s.selectSurface);
   const frame = usePreviewStore((s) => s.frame);
   const setFrame = usePreviewStore((s) => s.setFrame);
+  const rendererId = usePreviewRendererStore((s) => s.rendererId);
+  const setRendererId = usePreviewRendererStore((s) => s.setRendererId);
+  const renderer = getRenderer(rendererId);
 
   const tick = scrub === "head" ? entries.length - 1 : scrub;
   const { surfaces } = useMemo(() => stateAtTick(entries, tick), [entries, tick]);
@@ -75,6 +79,16 @@ export function Preview() {
             {f}
           </button>
         ))}
+        <select
+          aria-label="Preview renderer"
+          value={rendererId}
+          onChange={(e) => setRendererId(e.target.value)}
+          className="mono ml-auto rounded border border-edge-strong bg-surface px-1 py-0.5 text-xs text-ink"
+        >
+          {PREVIEW_RENDERERS.map((r) => (
+            <option key={r.id} value={r.id}>{r.label}</option>
+          ))}
+        </select>
       </div>
       <div className="flex-1 overflow-auto p-3">
         <div
@@ -85,7 +99,11 @@ export function Preview() {
             <div className="mb-1 mono text-xs text-ink-muted">surface: {activeId}</div>
             <div className="rounded bg-surface p-2">
               <SurfaceErrorBoundary surfaceId={activeId}>
-                <A2uiSurface key={activeId} surface={activeSurface as never} />
+                <renderer.Surface
+                  key={`${activeId}:${rendererId}`}
+                  surfaceId={activeId}
+                  surface={activeSurface}
+                />
               </SurfaceErrorBoundary>
             </div>
           </div>

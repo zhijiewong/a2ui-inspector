@@ -1,18 +1,27 @@
 import { CommandSchema, EventSchema, type Command, type Event } from "@a2ui-inspector/shared";
 import { useSessionStore } from "../store/session.js";
 
+const SIDECAR_ORIGIN = import.meta.env.DEV ? "http://127.0.0.1:8765" : "";
+const BRIDGE_WS = import.meta.env.DEV ? "ws://127.0.0.1:8765/bridge" : `ws://${location.host}/bridge`;
+
 export class BridgeClient {
   private ws?: WebSocket;
-  private url: string;
 
-  constructor(url = import.meta.env.DEV
-    ? `ws://127.0.0.1:8765/bridge`
-    : `ws://${location.host}/bridge`) {
-    this.url = url;
-  }
+  /** Fetch the bridge token (same-origin), then open the authed WebSocket. */
+  async connect(): Promise<void> {
+    let token = "";
+    try {
+      const res = await fetch(`${SIDECAR_ORIGIN}/bridge-token`);
+      token = ((await res.json()) as { token?: string }).token ?? "";
+    } catch {
+      useSessionStore.getState().applyEvent({
+        kind: "diagnostic", level: "error",
+        message: "bridge: could not fetch auth token from the sidecar",
+      });
+      return;
+    }
 
-  connect(): void {
-    this.ws = new WebSocket(this.url);
+    this.ws = new WebSocket(`${BRIDGE_WS}?token=${encodeURIComponent(token)}`);
     this.ws.addEventListener("message", (ev) => {
       let parsed: unknown;
       try { parsed = JSON.parse(ev.data as string); } catch { return; }
@@ -20,7 +29,7 @@ export class BridgeClient {
       if (!result.success) {
         useSessionStore.getState().applyEvent({
           kind: "diagnostic", level: "warn",
-          message: `bridge: bad event — ${result.error.message}`
+          message: `bridge: bad event — ${result.error.message}`,
         });
         return;
       }
