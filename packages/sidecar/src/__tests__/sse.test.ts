@@ -38,3 +38,64 @@ describe("SseDecoder", () => {
     expect(d.push(": just a comment\n\n")).toEqual([]);
   });
 });
+
+import { afterEach, beforeEach } from "vitest";
+import { createServer, type Server } from "node:http";
+import { SessionStore } from "../session/store.js";
+import { connectSseUpstream } from "../adapters/sse.js";
+
+describe("connectSseUpstream", () => {
+  let server: Server;
+  let port: number;
+  let pushEvent: ((data: string) => void) | undefined;
+
+  beforeEach(async () => {
+    server = createServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
+      pushEvent = (data: string) => res.write(`data: ${data}\n\n`);
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => {
+        const addr = server.address();
+        if (typeof addr === "object" && addr) port = addr.port;
+        resolve();
+      });
+    });
+  });
+
+  afterEach(async () => {
+    pushEvent = undefined;
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  it("appends each valid A2UI message streamed over SSE", async () => {
+    const store = new SessionStore();
+    const statuses: string[] = [];
+    const handle = await connectSseUpstream(`http://127.0.0.1:${port}/`, store, (s) => statuses.push(s.status));
+    await new Promise((r) => setTimeout(r, 50));
+    pushEvent!(JSON.stringify({ version: "v0.9", createSurface: { surfaceId: "main" } }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(store.length).toBe(1);
+    expect(statuses).toContain("connected");
+    handle.close();
+  });
+
+  it("ignores malformed SSE payloads", async () => {
+    const store = new SessionStore();
+    const handle = await connectSseUpstream(`http://127.0.0.1:${port}/`, store, () => {});
+    await new Promise((r) => setTimeout(r, 50));
+    pushEvent!("not-json");
+    pushEvent!(JSON.stringify({ version: "v0.9", createSurface: { surfaceId: "ok" } }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(store.length).toBe(1);
+    handle.close();
+  });
+
+  it("does not expose a send() — SSE is unidirectional", async () => {
+    const store = new SessionStore();
+    const handle = await connectSseUpstream(`http://127.0.0.1:${port}/`, store, () => {});
+    await new Promise((r) => setTimeout(r, 50));
+    expect(handle.send).toBeUndefined();
+    handle.close();
+  });
+});
