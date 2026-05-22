@@ -1,15 +1,9 @@
 import { WebSocket } from "ws";
-import { A2UIMessageSchema } from "@a2ui-inspector/shared";
+import { A2UIMessageSchema, type A2UIAction } from "@a2ui-inspector/shared";
 import type { SessionStore } from "../session/store.js";
+import type { UpstreamHandle, UpstreamStatus } from "./types.js";
 
-export interface UpstreamStatus {
-  status: "connecting" | "connected" | "closed" | "error";
-  detail?: string;
-}
-
-export interface UpstreamHandle {
-  close: () => void;
-}
+export type { UpstreamHandle, UpstreamStatus } from "./types.js";
 
 export async function connectWebSocketUpstream(
   url: string,
@@ -32,5 +26,8 @@ export async function connectWebSocketUpstream(
 
   return {
     close: () => ws.close(),
+    send: (action: A2UIAction) => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(action));
+    },
   };
 }
