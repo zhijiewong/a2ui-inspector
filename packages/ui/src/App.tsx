@@ -15,6 +15,8 @@ import { useMainPaneStore } from "./store/mainPane.js";
 import { useCommandPaletteStore } from "./store/commandPalette.js";
 import { useThemeStore } from "./store/theme.js";
 import { useShareViewStore } from "./store/shareView.js";
+import { useTimelineFilterStore } from "./store/timelineFilter.js";
+import { useFilterFocusStore } from "./store/filterFocus.js";
 import { decodeSession, ShareDecodeError } from "./share/codec.js";
 import { bridge } from "./transport/bridgeClient.js";
 
@@ -63,6 +65,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    useTimelineFilterStore.getState().hydrate();
+  }, []);
+
+  useEffect(() => {
     const el = dropRef.current;
     if (!el) return;
     const prevent = (e: DragEvent) => { e.preventDefault(); };
@@ -104,6 +110,7 @@ export default function App() {
       onOpenFile: handleLoadFile,
       onTogglePalette: togglePalette,
       onTab: setTab,
+      onFocusFilter: () => useFilterFocusStore.getState().requestFocus(),
     }),
     [handleSave, handleLoadFile, togglePalette, setTab]
   );
