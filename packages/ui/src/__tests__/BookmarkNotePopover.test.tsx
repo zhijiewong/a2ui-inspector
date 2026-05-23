@@ -23,6 +23,14 @@ describe("BookmarkNotePopover", () => {
     expect(textarea.value).toBe("");
   });
 
+  it("exposes the popover panel as a labelled dialog", () => {
+    useBookmarkEditorStore.getState().openFor(5);
+    render(<BookmarkNotePopover />);
+    const dialog = screen.getByRole("dialog", { name: /Bookmark · tick #5/ });
+    expect(dialog).toBeTruthy();
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+  });
+
   it("pre-fills the textarea with the existing note", () => {
     useBookmarksStore.getState().setNote(5, "broke here");
     useBookmarkEditorStore.getState().openFor(5);

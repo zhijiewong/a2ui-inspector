@@ -37,8 +37,11 @@ export function BookmarkNotePopover() {
       <div
         className="w-[28rem] max-w-[90vw] rounded border border-edge-strong bg-surface p-4"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bookmark-popover-title"
       >
-        <div className="mb-2 font-semibold text-ink">Bookmark · tick #{openTick}</div>
+        <div id="bookmark-popover-title" className="mb-2 font-semibold text-ink">Bookmark · tick #{openTick}</div>
         <textarea
           aria-label="Bookmark note"
           value={draft}

@@ -58,9 +58,8 @@ test("a bookmarked tick + note survives share round-trip", async ({ page }) => {
   const noteField = page.getByLabel(/bookmark note/i);
   await expect(noteField).toBeVisible({ timeout: 5000 });
   await noteField.fill("broke here");
-  // Scope Save to the popover (sibling of the note textarea) to avoid the toolbar's Save.
-  const popover = noteField.locator("xpath=ancestor::div[contains(@class,'rounded')][1]");
-  await popover.getByRole("button", { name: /^Save$/ }).click();
+  // Scope Save to the popover dialog to avoid the toolbar's Save.
+  await page.getByRole("dialog").getByRole("button", { name: /^Save$/ }).click();
 
   // Note text renders under the bookmarked row.
   await expect(page.getByText("broke here")).toBeVisible();
