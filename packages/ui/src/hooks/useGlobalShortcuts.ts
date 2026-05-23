@@ -6,6 +6,7 @@ export interface ShortcutHandlers {
   onOpenFile: () => void;
   onTogglePalette: () => void;
   onTab: (tab: MainPaneTab) => void;
+  onFocusFilter: () => void;
 }
 
 const TAB_KEYS: Record<string, MainPaneTab> = {
@@ -42,6 +43,11 @@ export function useGlobalShortcuts(handlers: ShortcutHandlers): void {
       if (mod && key === "o") {
         e.preventDefault();
         handlers.onOpenFile();
+        return;
+      }
+      if (!mod && key === "/") {
+        e.preventDefault();
+        handlers.onFocusFilter();
         return;
       }
       if (!mod && key in TAB_KEYS) {

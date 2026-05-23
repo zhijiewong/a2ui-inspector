@@ -12,7 +12,11 @@ function makeHandlers(): ShortcutHandlers & { spies: Record<string, ReturnType<t
   const onOpenFile = vi.fn();
   const onTogglePalette = vi.fn();
   const onTab = vi.fn();
-  return { onSave, onOpenFile, onTogglePalette, onTab, spies: { onSave, onOpenFile, onTogglePalette, onTab } };
+  const onFocusFilter = vi.fn();
+  return {
+    onSave, onOpenFile, onTogglePalette, onTab, onFocusFilter,
+    spies: { onSave, onOpenFile, onTogglePalette, onTab, onFocusFilter },
+  };
 }
 
 describe("useGlobalShortcuts", () => {
@@ -56,6 +60,24 @@ describe("useGlobalShortcuts", () => {
     input.focus();
     fireEvent.keyDown(input, { key: "t" });
     expect(h.spies.onTab).not.toHaveBeenCalled();
+    input.remove();
+  });
+
+  it("`/` focuses the filter when not in a typing target", () => {
+    const h = makeHandlers();
+    render(<Harness handlers={h} />);
+    fireEvent.keyDown(window, { key: "/" });
+    expect(h.spies.onFocusFilter).toHaveBeenCalledTimes(1);
+  });
+
+  it("`/` inside an input is ignored", () => {
+    const h = makeHandlers();
+    render(<Harness handlers={h} />);
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    fireEvent.keyDown(input, { key: "/" });
+    expect(h.spies.onFocusFilter).not.toHaveBeenCalled();
     input.remove();
   });
 });
