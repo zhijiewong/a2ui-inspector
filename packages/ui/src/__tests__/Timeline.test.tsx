@@ -106,4 +106,38 @@ describe("Timeline", () => {
     useFilterFocusStore.getState().requestFocus();
     await waitFor(() => expect(document.activeElement).toBe(input));
   });
+
+  it("clicking a row's bookmark star toggles a bookmark at that tick without scrubbing", async () => {
+    const { useBookmarksStore } = await import("../store/bookmarks.js");
+    useBookmarksStore.getState().clear();
+    const scrubBefore = useTimelineStore.getState().scrubTick;
+    render(<Timeline />);
+    const star = screen.getByRole("button", { name: /Bookmark tick 0/ });
+    fireEvent.click(star);
+    expect(useBookmarksStore.getState().has(0)).toBe(true);
+    expect(useTimelineStore.getState().scrubTick).toBe(scrubBefore);
+    fireEvent.click(screen.getByRole("button", { name: /Bookmark tick 0/ }));
+    expect(useBookmarksStore.getState().has(0)).toBe(false);
+    useBookmarksStore.getState().clear();
+  });
+
+  it("shift-clicking the star opens the bookmark editor for that tick", async () => {
+    const { useBookmarksStore } = await import("../store/bookmarks.js");
+    const { useBookmarkEditorStore } = await import("../store/bookmarkEditor.js");
+    useBookmarksStore.getState().clear();
+    useBookmarkEditorStore.setState({ openTick: undefined });
+    render(<Timeline />);
+    fireEvent.click(screen.getByRole("button", { name: /Bookmark tick 1/ }), { shiftKey: true });
+    expect(useBookmarkEditorStore.getState().openTick).toBe(1);
+    useBookmarkEditorStore.setState({ openTick: undefined });
+  });
+
+  it("renders the note text on a bookmarked row", async () => {
+    const { useBookmarksStore } = await import("../store/bookmarks.js");
+    useBookmarksStore.getState().clear();
+    useBookmarksStore.getState().setNote(0, "broke here");
+    render(<Timeline />);
+    expect(screen.getByText("broke here")).toBeTruthy();
+    useBookmarksStore.getState().clear();
+  });
 });
