@@ -53,6 +53,18 @@ describe("session store loadEntries", () => {
     expect(useDiagnosticsStore.getState().diagnostics.size).toBe(0);
   });
 
+  it("loadEntries seeds protocol diagnostics for the new entries", () => {
+    useSessionStore.getState().loadEntries([
+      {
+        tick: 0, ts: 0, direction: "agent->client",
+        // unknown-surface: updateComponents for a surface never createSurface'd
+        message: { version: "v0.9", updateComponents: { surfaceId: "ghost", components: [] } } as never,
+      },
+    ]);
+    const codes = Array.from(useDiagnosticsStore.getState().diagnostics.values()).map((d) => d.code);
+    expect(codes).toContain("unknown-surface");
+  });
+
   it("applying a sessionLoaded event clears bookmarks", () => {
     useBookmarksStore.getState().toggle(7);
     seedDiagnostic();

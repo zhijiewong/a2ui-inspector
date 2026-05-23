@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type MainPaneTab = "preview" | "tree" | "diff";
+export type MainPaneTab = "preview" | "tree" | "diff" | "errors";
 
 interface MainPaneState {
   tab: MainPaneTab;
