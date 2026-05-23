@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deriveProtocolDiagnostics } from "../deriveProtocolDiagnostics.js";
-import type { SessionEntry } from "@a2ui-inspector/shared";
+import type { SessionEntry } from "../session.js";
 
 const msg = (tick: number, message: object): SessionEntry => ({
   tick, ts: tick, direction: "agent->client",

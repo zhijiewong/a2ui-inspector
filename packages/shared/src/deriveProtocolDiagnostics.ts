@@ -1,4 +1,5 @@
-import type { Diagnostic, SessionEntry } from "@a2ui-inspector/shared";
+import type { Diagnostic } from "./diagnostic.js";
+import type { SessionEntry } from "./session.js";
 
 const EXPECTED_VERSION = "v0.9";
 

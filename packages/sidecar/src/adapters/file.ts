@@ -1,3 +1,4 @@
+import { deriveProtocolDiagnostics } from "@a2ui-inspector/shared";
 import { loadSession, loadSessionDiagnostics } from "../session/persistence.js";
 import type { SessionStore } from "../session/store.js";
 
@@ -6,5 +7,8 @@ export async function loadFileIntoStore(path: string, store: SessionStore): Prom
   store.replace(entries);
   const diagnostics = await loadSessionDiagnostics(path);
   store.replaceDiagnostics(diagnostics);
+  for (const d of deriveProtocolDiagnostics(entries)) {
+    store.appendDiagnostic(d);
+  }
   return entries.length;
 }

@@ -64,6 +64,22 @@ describe("file adapter", () => {
     expect(store.length).toBe(2);
     expect(store.entries()[0]?.tick).toBe(0);
   });
+
+  it("seeds protocol diagnostics from the loaded entries", async () => {
+    const dir = tmp();
+    try {
+      const file = join(dir, "s.jsonl");
+      writeFileSync(file, JSON.stringify({
+        tick: 0, ts: 0, direction: "agent->client",
+        message: { version: "v0.9", updateComponents: { surfaceId: "ghost", components: [] } },
+      }) + "\n");
+      const store = new SessionStore();
+      await loadFileIntoStore(file, store);
+      expect(store.diagnostics().some((d) => d.code === "unknown-surface")).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("persistence: diagnostics sibling file", () => {

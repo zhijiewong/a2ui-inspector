@@ -1,8 +1,7 @@
 import { create } from "zustand";
-import type { Event, SessionEntry } from "@a2ui-inspector/shared";
+import { deriveProtocolDiagnostics, type Event, type SessionEntry } from "@a2ui-inspector/shared";
 import { useBookmarksStore } from "./bookmarks.js";
 import { useDiagnosticsStore } from "./diagnostics.js";
-import { deriveProtocolDiagnostics } from "../diagnostics/deriveProtocolDiagnostics.js";
 
 interface SessionState {
   entries: SessionEntry[];
