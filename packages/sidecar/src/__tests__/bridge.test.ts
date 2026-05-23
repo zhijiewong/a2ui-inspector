@@ -100,7 +100,7 @@ describe("bridge", () => {
   it("replays existing diagnostics to a new client on connect", async () => {
     store.appendDiagnostic({
       ts: Date.now(),
-      category: "parse",
+      category: "schema",
       severity: "error",
       code: "parse-failed",
       message: "seeded",
@@ -127,7 +127,7 @@ describe("bridge", () => {
 
     store.appendDiagnostic({
       ts: Date.now(),
-      category: "preview",
+      category: "render",
       severity: "warn",
       code: "preview-threw",
       message: "live",
