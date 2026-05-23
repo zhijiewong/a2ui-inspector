@@ -77,7 +77,8 @@ function isBookmarkLine(parsed: unknown): parsed is { bookmark: unknown } {
   return (
     typeof parsed === "object" &&
     parsed !== null &&
-    "bookmark" in parsed
+    "bookmark" in parsed &&
+    Object.keys(parsed as object).length === 1
   );
 }
 

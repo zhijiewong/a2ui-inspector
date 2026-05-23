@@ -94,4 +94,13 @@ describe("session codec — bookmarks", () => {
     const badFragment = await _gzipToFragment(badJsonl);
     await expect(decodeSession(badFragment)).rejects.toBeInstanceOf(ShareDecodeError);
   });
+
+  it("does not classify a line as a bookmark when it has extra top-level keys", async () => {
+    // A line with `bookmark` plus other fields should fall through to the
+    // SessionEntry path and fail schema validation (not be silently swallowed
+    // as a bookmark).
+    const ambiguous = JSON.stringify({ bookmark: { tick: 0, note: "n" }, tick: 0 });
+    const fragment = await _gzipToFragment(ambiguous);
+    await expect(decodeSession(fragment)).rejects.toBeInstanceOf(ShareDecodeError);
+  });
 });
