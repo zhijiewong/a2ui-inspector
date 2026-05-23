@@ -33,7 +33,7 @@ export const useSessionStore = create<SessionState>((set) => ({
           useBookmarksStore.getState().clear();
           return { entries: [], diagnostics: s.diagnostics };
         case "diagnostic":
-          return { diagnostics: [...s.diagnostics, { level: e.level, message: e.message, ts: Date.now() }] };
+          return { diagnostics: [...s.diagnostics, { level: e.diagnostic.severity, message: e.diagnostic.message, ts: e.diagnostic.ts }] };
       }
     }),
   loadEntries: (entries) => {
