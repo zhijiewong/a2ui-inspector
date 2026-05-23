@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import type { Event, SessionEntry } from "@a2ui-inspector/shared";
 import { useBookmarksStore } from "./bookmarks.js";
+import { useDiagnosticsStore } from "./diagnostics.js";
 
 interface SessionState {
   entries: SessionEntry[];
   upstreamStatus: "idle" | "connecting" | "connected" | "closed" | "error";
   upstreamDetail?: string;
-  diagnostics: Array<{ level: "warn" | "error"; message: string; ts: number }>;
   applyEvent: (e: Event) => void;
   loadEntries: (entries: SessionEntry[]) => void;
   reset: () => void;
@@ -15,7 +15,6 @@ interface SessionState {
 export const useSessionStore = create<SessionState>((set) => ({
   entries: [],
   upstreamStatus: "idle",
-  diagnostics: [],
   applyEvent: (e) =>
     set((s) => {
       switch (e.kind) {
@@ -31,17 +30,22 @@ export const useSessionStore = create<SessionState>((set) => ({
           return { upstreamStatus: e.status, upstreamDetail: e.detail };
         case "sessionLoaded":
           useBookmarksStore.getState().clear();
-          return { entries: [], diagnostics: s.diagnostics };
+          useDiagnosticsStore.getState().clear();
+          return { entries: [] };
         case "diagnostic":
-          return { diagnostics: [...s.diagnostics, { level: e.diagnostic.severity, message: e.diagnostic.message, ts: e.diagnostic.ts }] };
+          // Side-effect only: route the diagnostic to its dedicated store; session state unchanged.
+          useDiagnosticsStore.getState().add(e.diagnostic);
+          return s;
       }
     }),
   loadEntries: (entries) => {
     useBookmarksStore.getState().clear();
+    useDiagnosticsStore.getState().clear();
     set({ entries });
   },
   reset: () => {
     useBookmarksStore.getState().clear();
-    set({ entries: [], upstreamStatus: "idle", upstreamDetail: undefined, diagnostics: [] });
+    useDiagnosticsStore.getState().clear();
+    set({ entries: [], upstreamStatus: "idle", upstreamDetail: undefined });
   },
 }));
