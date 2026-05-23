@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WebSocketServer, type WebSocket } from "ws";
 import { SessionStore } from "../session/store.js";
 import { connectWebSocketUpstream } from "../adapters/websocket.js";
@@ -6,7 +6,7 @@ import { connectWebSocketUpstream } from "../adapters/websocket.js";
 describe("WebSocket upstream adapter", () => {
   let server: WebSocketServer;
   let port: number;
-  let clientSocket: WebSocket | undefined;
+  let nextSocket: Promise<WebSocket>;
 
   beforeEach(async () => {
     await new Promise<void>((resolve) => {
@@ -15,7 +15,11 @@ describe("WebSocket upstream adapter", () => {
         if (typeof addr === "object" && addr) port = addr.port;
         resolve();
       });
-      server.on("connection", (s) => { clientSocket = s; });
+    });
+    // Re-arm before each test so we await the *next* incoming connection,
+    // not a stale resolved promise from a prior test.
+    nextSocket = new Promise<WebSocket>((resolve) => {
+      server.once("connection", (s) => resolve(s));
     });
   });
 
@@ -27,8 +31,8 @@ describe("WebSocket upstream adapter", () => {
     const store = new SessionStore();
     const statuses: string[] = [];
     const handle = await connectWebSocketUpstream(`ws://localhost:${port}`, store, (s) => statuses.push(s.status));
-    await new Promise((r) => setTimeout(r, 20));
-    clientSocket!.send(JSON.stringify({ version: "v0.9", createSurface: { surfaceId: "main" } }));
+    const clientSocket = await nextSocket;
+    clientSocket.send(JSON.stringify({ version: "v0.9", createSurface: { surfaceId: "main" } }));
     await new Promise((r) => setTimeout(r, 20));
     expect(store.length).toBe(1);
     expect(statuses).toContain("connected");
@@ -39,9 +43,9 @@ describe("WebSocket upstream adapter", () => {
     const store = new SessionStore();
     const statuses: string[] = [];
     const handle = await connectWebSocketUpstream(`ws://localhost:${port}`, store, (s) => statuses.push(s.status));
-    await new Promise((r) => setTimeout(r, 20));
-    clientSocket!.send("not-json");
-    clientSocket!.send(JSON.stringify({ version: "v0.9", createSurface: { surfaceId: "good" } }));
+    const clientSocket = await nextSocket;
+    clientSocket.send("not-json");
+    clientSocket.send(JSON.stringify({ version: "v0.9", createSurface: { surfaceId: "good" } }));
     await new Promise((r) => setTimeout(r, 20));
     expect(store.length).toBe(1);
     handle.close();
@@ -51,11 +55,13 @@ describe("WebSocket upstream adapter", () => {
     const store = new SessionStore();
     const received: string[] = [];
     const handle = await connectWebSocketUpstream(`ws://localhost:${port}`, store, () => {});
-    await new Promise((r) => setTimeout(r, 20));
-    clientSocket!.on("message", (d) => received.push(d.toString()));
-    handle.send?.({ surfaceId: "main", componentId: "btn", kind: "tap" });
-    await new Promise((r) => setTimeout(r, 20));
-    expect(received.length).toBe(1);
+    const clientSocket = await nextSocket;
+    clientSocket.on("message", (d) => received.push(d.toString()));
+    // handle.send no-ops until the client ws is OPEN; poll rather than rely on a fixed delay.
+    await vi.waitFor(() => {
+      handle.send?.({ surfaceId: "main", componentId: "btn", kind: "tap" });
+      expect(received.length).toBe(1);
+    });
     expect(JSON.parse(received[0]!)).toEqual({ surfaceId: "main", componentId: "btn", kind: "tap" });
     handle.close();
   });
