@@ -43,6 +43,11 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
     }
   }
 
+  // Replay existing diagnostics to the new client.
+  for (const d of store.diagnostics()) {
+    send({ kind: "diagnostic", diagnostic: d });
+  }
+
   const unsubAppend = store.onAppend((entry) => {
     if (entry.message) send({ kind: "messageReceived", tick: entry.tick, ts: entry.ts, message: entry.message });
     else if (entry.action) send({ kind: "actionSent", tick: entry.tick, ts: entry.ts, action: entry.action });
@@ -54,6 +59,16 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
       if (entry.message) send({ kind: "messageReceived", tick: entry.tick, ts: entry.ts, message: entry.message });
       else if (entry.action) send({ kind: "actionSent", tick: entry.tick, ts: entry.ts, action: entry.action });
     }
+  });
+
+  const unsubDiagAppend = store.onDiagnosticAppend((d) => {
+    send({ kind: "diagnostic", diagnostic: d });
+  });
+
+  const unsubDiagReplace = store.onDiagnosticReplace((ds) => {
+    // No dedicated "diagnostics cleared" event — UI re-derives on sessionLoaded.
+    // Re-emit each remaining diagnostic so a client connecting mid-replace stays consistent.
+    for (const d of ds) send({ kind: "diagnostic", diagnostic: d });
   });
 
   socket.on("message", async (raw) => {
@@ -127,5 +142,7 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
     proxy?.close();
     unsubAppend();
     unsubReplace();
+    unsubDiagAppend();
+    unsubDiagReplace();
   });
 }
