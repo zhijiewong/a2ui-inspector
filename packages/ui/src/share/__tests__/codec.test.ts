@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SessionEntry } from "@a2ui-inspector/shared";
-import { encodeSession, decodeSession, ShareDecodeError, MAX_FRAGMENT_BYTES } from "../codec.js";
+import { encodeSession, decodeSession, ShareDecodeError, MAX_FRAGMENT_BYTES, _gzipToFragment } from "../codec.js";
+import type { Bookmark } from "../../store/bookmarks.js";
 
 const entry = (tick: number): SessionEntry => ({
   tick,
@@ -16,18 +17,21 @@ describe("session codec", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     const decoded = await decodeSession(res.fragment);
-    expect(decoded).toEqual(entries);
+    expect(decoded.entries).toEqual(entries);
+    expect(decoded.bookmarks).toEqual([]);
   });
 
   it("round-trips an empty session", async () => {
     const res = await encodeSession([]);
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(await decodeSession(res.fragment)).toEqual([]);
+    const decoded = await decodeSession(res.fragment);
+    expect(decoded.entries).toEqual([]);
+    expect(decoded.bookmarks).toEqual([]);
   });
 
   it("returns too-large when the encoded blob exceeds the cap", async () => {
-    const res = await encodeSession([entry(0)], 1);
+    const res = await encodeSession([entry(0)], [], 1);
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.reason).toBe("too-large");
@@ -47,8 +51,47 @@ describe("session codec", () => {
   });
 
   it("throws ShareDecodeError when a decoded line is not a valid SessionEntry", async () => {
-    const { _gzipToFragment } = await import("../codec.js");
     const badFragment = await _gzipToFragment(JSON.stringify({ tick: 0 }) + "\n");
+    await expect(decodeSession(badFragment)).rejects.toBeInstanceOf(ShareDecodeError);
+  });
+});
+
+describe("session codec — bookmarks", () => {
+  const entry = (tick: number): SessionEntry => ({
+    tick, ts: 1000 + tick, direction: "agent->client",
+    message: { version: "v0.9", createSurface: { surfaceId: `s${tick}` } } as never,
+  });
+
+  it("round-trips bookmarks alongside entries", async () => {
+    const entries = [entry(0), entry(1)];
+    const bookmarks: Bookmark[] = [{ tick: 0, note: "broke here" }, { tick: 1, note: "" }];
+    const res = await encodeSession(entries, bookmarks);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const decoded = await decodeSession(res.fragment);
+    expect(decoded.entries).toEqual(entries);
+    expect(decoded.bookmarks).toEqual(bookmarks);
+  });
+
+  it("encodes an empty bookmarks list", async () => {
+    const res = await encodeSession([entry(0)], []);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const decoded = await decodeSession(res.fragment);
+    expect(decoded.bookmarks).toEqual([]);
+  });
+
+  it("decodes a legacy entries-only fragment with bookmarks: []", async () => {
+    const legacyJsonl = [entry(0), entry(1)].map((e) => JSON.stringify(e)).join("\n");
+    const legacyFragment = await _gzipToFragment(legacyJsonl);
+    const decoded = await decodeSession(legacyFragment);
+    expect(decoded.entries.length).toBe(2);
+    expect(decoded.bookmarks).toEqual([]);
+  });
+
+  it("rejects a malformed bookmark line via ShareDecodeError", async () => {
+    const badJsonl = JSON.stringify({ bookmark: { tick: "x", note: "n" } });
+    const badFragment = await _gzipToFragment(badJsonl);
     await expect(decodeSession(badFragment)).rejects.toBeInstanceOf(ShareDecodeError);
   });
 });
