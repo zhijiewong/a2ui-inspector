@@ -3,6 +3,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { Timeline } from "../panels/Timeline.js";
 import { useSessionStore } from "../store/session.js";
 import { useTimelineStore } from "../store/timeline.js";
+import { useDiagnosticsStore } from "../store/diagnostics.js";
 
 beforeEach(() => {
   useSessionStore.getState().reset();
@@ -139,5 +140,38 @@ describe("Timeline", () => {
     render(<Timeline />);
     expect(screen.getByText("broke here")).toBeTruthy();
     useBookmarksStore.getState().clear();
+  });
+});
+
+describe("Timeline diagnostic dots", () => {
+  beforeEach(async () => {
+    const { useTimelineFilterStore } = await import("../store/timelineFilter.js");
+    useTimelineFilterStore.getState().reset();
+    useDiagnosticsStore.getState().clear();
+    useSessionStore.getState().loadEntries([
+      { tick: 0, ts: 0, direction: "agent->client",
+        message: { version: "v0.9", createSurface: { surfaceId: "main" } } as never },
+      { tick: 1, ts: 1, direction: "agent->client",
+        message: { version: "v0.9", updateDataModel: { surfaceId: "main", path: "/", value: {} } } as never },
+    ]);
+  });
+
+  it("renders a red dot on rows with a diagnostic", () => {
+    useDiagnosticsStore.getState().add({
+      ts: 1, tick: 1, category: "schema", severity: "error",
+      code: "parse-failed", message: "bad",
+    });
+    render(<Timeline />);
+    expect(screen.getByTestId("timeline-row-1").querySelector('[data-testid="diagnostic-dot"]')).toBeTruthy();
+    expect(screen.getByTestId("timeline-row-0").querySelector('[data-testid="diagnostic-dot"]')).toBeNull();
+  });
+
+  it("renders exactly one dot even when multiple diagnostics target the same tick", () => {
+    useDiagnosticsStore.getState().addMany([
+      { ts: 1, tick: 0, category: "schema", severity: "error", code: "a", message: "" },
+      { ts: 1, tick: 0, category: "protocol", severity: "warn", code: "b", message: "" },
+    ]);
+    render(<Timeline />);
+    expect(screen.getByTestId("timeline-row-0").querySelectorAll('[data-testid="diagnostic-dot"]').length).toBe(1);
   });
 });

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { A2UIActionSchema, A2UIMessageSchema } from "./a2ui.js";
+import { DiagnosticSchema } from "./diagnostic.js";
 
 const UpstreamConfigSchema = z.discriminatedUnion("transport", [
   z.object({ transport: z.literal("websocket"), url: z.string().url() }),
@@ -44,8 +45,7 @@ export const EventSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("diagnostic"),
-    level: z.enum(["warn", "error"]),
-    message: z.string(),
+    diagnostic: DiagnosticSchema,
   }),
 ]);
 

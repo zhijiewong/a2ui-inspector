@@ -15,8 +15,11 @@ export class BridgeClient {
       token = ((await res.json()) as { token?: string }).token ?? "";
     } catch {
       useSessionStore.getState().applyEvent({
-        kind: "diagnostic", level: "error",
-        message: "bridge: could not fetch auth token from the sidecar",
+        kind: "diagnostic",
+        diagnostic: {
+          ts: Date.now(), category: "transport", severity: "error",
+          code: "bridge-http-error", message: "bridge: could not fetch auth token from the sidecar",
+        },
       });
       return;
     }
@@ -28,8 +31,11 @@ export class BridgeClient {
       const result = EventSchema.safeParse(parsed);
       if (!result.success) {
         useSessionStore.getState().applyEvent({
-          kind: "diagnostic", level: "warn",
-          message: `bridge: bad event — ${result.error.message}`,
+          kind: "diagnostic",
+          diagnostic: {
+            ts: Date.now(), category: "transport", severity: "warn",
+            code: "bridge-bad-event", message: `bridge: bad event — ${result.error.message}`,
+          },
         });
         return;
       }

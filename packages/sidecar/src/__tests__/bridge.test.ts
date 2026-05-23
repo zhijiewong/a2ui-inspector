@@ -54,7 +54,11 @@ describe("bridge", () => {
       action: { surfaceId: "main", componentId: "btn", kind: "tap" },
     }));
     await new Promise((r) => setTimeout(r, 30));
-    expect(events.some((e) => e.kind === "diagnostic")).toBe(true);
+    const diag = events.find((e) => e.kind === "diagnostic") as Extract<Event, { kind: "diagnostic" }> | undefined;
+    expect(diag).toBeDefined();
+    expect(diag!.diagnostic.category).toBe("transport");
+    expect(diag!.diagnostic.severity).toBe("warn");
+    expect(diag!.diagnostic.code).toBe("action-inject-no-upstream");
     expect(store.length).toBe(0);
     client.close();
   });
@@ -91,6 +95,50 @@ describe("bridge", () => {
       client.once("open", () => client.close());
     });
     expect(closeCode).toBe(4401);
+  });
+
+  it("replays existing diagnostics to a new client on connect", async () => {
+    store.appendDiagnostic({
+      ts: Date.now(),
+      category: "schema",
+      severity: "error",
+      code: "parse-failed",
+      message: "seeded",
+    });
+
+    const events: Event[] = [];
+    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge?token=${bridgeToken}`);
+    client.on("message", (data) => events.push(JSON.parse(data.toString()) as Event));
+    await new Promise<void>((r) => client.once("open", () => r()));
+    await new Promise((r) => setTimeout(r, 30));
+
+    const diag = events.find(
+      (e) => e.kind === "diagnostic" && e.diagnostic.code === "parse-failed",
+    );
+    expect(diag).toBeDefined();
+    client.close();
+  });
+
+  it("forwards newly-appended diagnostics live", async () => {
+    const events: Event[] = [];
+    const client = new WebSocket(`ws://127.0.0.1:${port}/bridge?token=${bridgeToken}`);
+    await new Promise<void>((r) => client.once("open", () => r()));
+    client.on("message", (data) => events.push(JSON.parse(data.toString()) as Event));
+
+    store.appendDiagnostic({
+      ts: Date.now(),
+      category: "render",
+      severity: "warn",
+      code: "preview-threw",
+      message: "live",
+    });
+
+    await new Promise((r) => setTimeout(r, 30));
+    const diag = events.find(
+      (e) => e.kind === "diagnostic" && e.diagnostic.code === "preview-threw",
+    );
+    expect(diag).toBeDefined();
+    client.close();
   });
 
   it("serves the bridge token over /bridge-token", async () => {

@@ -1,5 +1,5 @@
-import { A2UIMessageSchema } from "@a2ui-inspector/shared";
 import type { SessionStore } from "../session/store.js";
+import { makeStatusEmitter, parseInboundPayload } from "./diagnostics.js";
 import type { UpstreamHandle, UpstreamStatus } from "./types.js";
 
 export type { UpstreamHandle, UpstreamStatus } from "./types.js";
@@ -48,7 +48,9 @@ export async function connectSseUpstream(
   store: SessionStore,
   onStatus: (s: UpstreamStatus) => void
 ): Promise<UpstreamHandle> {
-  onStatus({ status: "connecting" });
+  const emitStatus = makeStatusEmitter(store, onStatus);
+
+  emitStatus({ status: "connecting" });
   const controller = new AbortController();
 
   void (async () => {
@@ -58,10 +60,10 @@ export async function connectSseUpstream(
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
-        onStatus({ status: "error", detail: `HTTP ${res.status}` });
+        emitStatus({ status: "error", detail: `HTTP ${res.status}` });
         return;
       }
-      onStatus({ status: "connected" });
+      emitStatus({ status: "connected" });
       const decoder = new SseDecoder();
       const reader = res.body.getReader();
       const text = new TextDecoder();
@@ -69,16 +71,14 @@ export async function connectSseUpstream(
         const { done, value } = await reader.read();
         if (done) break;
         for (const payload of decoder.push(text.decode(value, { stream: true }))) {
-          let parsed: unknown;
-          try { parsed = JSON.parse(payload); } catch { continue; }
-          const result = A2UIMessageSchema.safeParse(parsed);
-          if (result.success) store.appendMessage(result.data);
+          const message = parseInboundPayload(store, payload);
+          if (message) store.appendMessage(message);
         }
       }
-      onStatus({ status: "closed" });
+      emitStatus({ status: "closed" });
     } catch (err) {
-      if (controller.signal.aborted) onStatus({ status: "closed" });
-      else onStatus({ status: "error", detail: String(err) });
+      if (controller.signal.aborted) emitStatus({ status: "closed" });
+      else emitStatus({ status: "error", detail: String(err) });
     }
   })();
 

@@ -1,12 +1,32 @@
-import { CommandSchema, type Event } from "@a2ui-inspector/shared";
+import { CommandSchema, type Diagnostic, type Event } from "@a2ui-inspector/shared";
 import type { WebSocket } from "ws";
 import { connectWebSocketUpstream } from "./adapters/websocket.js";
 import { connectSseUpstream } from "./adapters/sse.js";
 import { startWebSocketProxy, type RunningProxy } from "./adapters/proxy.js";
 import { loadFileIntoStore } from "./adapters/file.js";
-import { saveSession } from "./session/persistence.js";
+import { saveSession, saveSessionDiagnostics } from "./session/persistence.js";
 import type { SessionStore } from "./session/store.js";
 import type { UpstreamHandle } from "./adapters/types.js";
+
+// Diagnostic code naming convention: <subject>-<action-or-condition>, lowercase, hyphen-separated.
+// Subject is the noun the diagnostic is about (command, upstream, proxy, action, file, session).
+// Codes are stable identifiers — change them only with deliberate migration.
+function makeDiagnostic(
+  severity: "warn" | "error",
+  code: string,
+  message: string,
+): { kind: "diagnostic"; diagnostic: Diagnostic } {
+  return {
+    kind: "diagnostic",
+    diagnostic: {
+      ts: Date.now(),
+      category: "transport",
+      severity,
+      code,
+      message,
+    },
+  };
+}
 
 export function registerBridgeClient(socket: WebSocket, store: SessionStore): void {
   let upstream: UpstreamHandle | undefined;
@@ -23,6 +43,11 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
     }
   }
 
+  // Replay existing diagnostics to the new client.
+  for (const d of store.diagnostics()) {
+    send({ kind: "diagnostic", diagnostic: d });
+  }
+
   const unsubAppend = store.onAppend((entry) => {
     if (entry.message) send({ kind: "messageReceived", tick: entry.tick, ts: entry.ts, message: entry.message });
     else if (entry.action) send({ kind: "actionSent", tick: entry.tick, ts: entry.ts, action: entry.action });
@@ -36,15 +61,25 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
     }
   });
 
+  const unsubDiagAppend = store.onDiagnosticAppend((d) => {
+    send({ kind: "diagnostic", diagnostic: d });
+  });
+
+  const unsubDiagReplace = store.onDiagnosticReplace((ds) => {
+    // No dedicated "diagnostics cleared" event — UI re-derives on sessionLoaded.
+    // Re-emit each remaining diagnostic so a client connecting mid-replace stays consistent.
+    for (const d of ds) send({ kind: "diagnostic", diagnostic: d });
+  });
+
   socket.on("message", async (raw) => {
     let parsed: unknown;
     try { parsed = JSON.parse(raw.toString()); } catch {
-      send({ kind: "diagnostic", level: "warn", message: "bridge: malformed JSON command" });
+      send(makeDiagnostic("warn", "command-malformed-json", "bridge: malformed JSON command"));
       return;
     }
     const result = CommandSchema.safeParse(parsed);
     if (!result.success) {
-      send({ kind: "diagnostic", level: "warn", message: `bridge: invalid command — ${result.error.message}` });
+      send(makeDiagnostic("warn", "command-invalid-schema", `bridge: invalid command — ${result.error.message}`));
       return;
     }
     const cmd = result.data;
@@ -60,7 +95,7 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
             upstream = await connectSseUpstream(cmd.config.url, store, onStatus);
           }
         } catch (err) {
-          send({ kind: "diagnostic", level: "error", message: `connectUpstream failed: ${String((err as Error).message)}` });
+          send(makeDiagnostic("error", "upstream-connect-failed", `connectUpstream failed: ${String((err as Error).message)}`));
         }
         return;
       }
@@ -71,7 +106,7 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
             send({ kind: "upstreamStatus", status: s.status, detail: s.detail })
           );
         } catch (err) {
-          send({ kind: "diagnostic", level: "error", message: `startProxy failed: ${String((err as Error).message)}` });
+          send(makeDiagnostic("error", "proxy-start-failed", `startProxy failed: ${String((err as Error).message)}`));
         }
         return;
       }
@@ -80,18 +115,25 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
           upstream.send(cmd.action);
           store.appendAction(cmd.action);
         } else {
-          send({ kind: "diagnostic", level: "warn", message: "injectAction: no sendable upstream connected (connect a WebSocket agent first)" });
+          send(makeDiagnostic("warn", "action-inject-no-upstream", "injectAction: no sendable upstream connected (connect a WebSocket agent first)"));
         }
         return;
       }
       case "loadFile": {
         try { await loadFileIntoStore(cmd.path, store); }
-        catch (err) { send({ kind: "diagnostic", level: "error", message: String((err as Error).message) }); }
+        catch (err) { send(makeDiagnostic("error", "file-load-failed", String((err as Error).message))); }
         return;
       }
       case "saveSession": {
         try { await saveSession(cmd.path, [...store.entries()]); }
-        catch (err) { send({ kind: "diagnostic", level: "error", message: String((err as Error).message) }); }
+        catch (err) {
+          send(makeDiagnostic("error", "session-save-failed", String((err as Error).message)));
+          return;
+        }
+        try { await saveSessionDiagnostics(cmd.path, [...store.diagnostics()]); }
+        catch (err) {
+          send(makeDiagnostic("error", "diagnostics-save-failed", String((err as Error).message)));
+        }
         return;
       }
       case "scrubTo":
@@ -107,5 +149,7 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
     proxy?.close();
     unsubAppend();
     unsubReplace();
+    unsubDiagAppend();
+    unsubDiagReplace();
   });
 }

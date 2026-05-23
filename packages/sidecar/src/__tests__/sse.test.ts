@@ -39,7 +39,7 @@ describe("SseDecoder", () => {
   });
 });
 
-import { afterEach, beforeEach } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import { createServer, type Server } from "node:http";
 import { SessionStore } from "../session/store.js";
 import { connectSseUpstream } from "../adapters/sse.js";
@@ -89,6 +89,32 @@ describe("connectSseUpstream", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(store.length).toBe(1);
     handle.close();
+  });
+
+  it("appends a schema diagnostic when an inbound SSE payload fails parsing", async () => {
+    const store = new SessionStore();
+    const handle = await connectSseUpstream(`http://127.0.0.1:${port}/`, store, () => {});
+    await vi.waitFor(() => { expect(pushEvent).toBeDefined(); });
+    pushEvent!("not-json");
+    await vi.waitFor(() => {
+      expect(store.diagnostics().some((d) => d.category === "schema" && d.code === "inbound-parse-failed")).toBe(true);
+    });
+    handle.close();
+  });
+
+  it("mirrors upstream close as a transport diagnostic on SSE", async () => {
+    const store = new SessionStore();
+    const handle = await connectSseUpstream(`http://127.0.0.1:${port}/`, store, () => {});
+    // Wait until the server-side handler has been invoked, so the adapter's
+    // fetch loop is actively reading — only then will abort() reach the catch
+    // block that emits the `closed` diagnostic.
+    await vi.waitFor(() => { expect(pushEvent).toBeDefined(); });
+    handle.close();
+    await vi.waitFor(() => {
+      expect(store.diagnostics().some((d) =>
+        d.category === "transport" && d.code === "upstream-closed"
+      )).toBe(true);
+    });
   });
 
   it("does not expose a send() — SSE is unidirectional", async () => {

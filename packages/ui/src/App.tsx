@@ -11,6 +11,9 @@ import { Preview } from "./panels/Preview.js";
 import { ComponentTree } from "./panels/ComponentTree.js";
 import { Diff } from "./panels/Diff.js";
 import { DataModel } from "./panels/DataModel.js";
+import { ErrorsPanel } from "./panels/ErrorsPanel.js";
+import { PreviewErrorBoundary } from "./components/PreviewErrorBoundary.js";
+import { useTimelineStore } from "./store/timeline.js";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts.js";
 import { useSessionStore } from "./store/session.js";
 import { useMainPaneStore } from "./store/mainPane.js";
@@ -33,6 +36,7 @@ export default function App() {
   const togglePalette = useCommandPaletteStore((s) => s.toggle);
   const toggleTheme = useThemeStore((s) => s.toggle);
   const isSharedView = useShareViewStore((s) => s.isSharedView);
+  const scrubTick = useTimelineStore((s) => s.scrubTick);
   const dropRef = useRef<HTMLDivElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -129,6 +133,7 @@ export default function App() {
       { id: "tab-preview", label: "Show Preview tab", run: () => setTab("preview") },
       { id: "tab-tree", label: "Show Tree tab", run: () => setTab("tree") },
       { id: "tab-diff", label: "Show Diff tab", run: () => setTab("diff") },
+      { id: "tab-errors", label: "Show Errors tab", run: () => setTab("errors") },
       { id: "theme", label: "Toggle light/dark theme", run: toggleTheme },
     ],
     [handleConnect, handleLoadFile, handleSave, setTab, toggleTheme]
@@ -183,9 +188,17 @@ export default function App() {
           <MainPaneTabs />
           <div className="flex flex-1 overflow-hidden">
             <div className="flex-1 overflow-auto">
-              {mainTab === "preview" && <Preview />}
+              {mainTab === "preview" && (
+                <PreviewErrorBoundary
+                  tick={typeof scrubTick === "number" ? scrubTick : undefined}
+                  resetKey={String(scrubTick)}
+                >
+                  <Preview />
+                </PreviewErrorBoundary>
+              )}
               {mainTab === "tree" && <ComponentTree />}
               {mainTab === "diff" && <Diff />}
+              {mainTab === "errors" && <ErrorsPanel />}
             </div>
             <aside className="w-80 overflow-auto border-l border-edge"><DataModel /></aside>
           </div>

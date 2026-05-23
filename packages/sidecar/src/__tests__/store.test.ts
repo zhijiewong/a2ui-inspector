@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { SessionStore } from "../session/store.js";
-import type { A2UIMessage, A2UIAction } from "@a2ui-inspector/shared";
+import type { A2UIMessage, A2UIAction, Diagnostic } from "@a2ui-inspector/shared";
 
 const msg = (id: string): A2UIMessage =>
   ({ version: "v0.9", createSurface: { surfaceId: id } }) as A2UIMessage;
@@ -94,5 +94,83 @@ describe("SessionStore", () => {
       { tick: 0, ts: 1, direction: "agent->client", message: msg("x") },
     ]);
     expect(appendListener).not.toHaveBeenCalled();
+  });
+});
+
+describe("SessionStore diagnostics", () => {
+  it("appendDiagnostic stores the diagnostic and notifies listeners", () => {
+    const store = new SessionStore();
+    const seen: Diagnostic[] = [];
+    store.onDiagnosticAppend((d) => seen.push(d));
+
+    const d: Diagnostic = {
+      ts: 1, category: "schema", severity: "error",
+      code: "parse-failed", message: "bad",
+    };
+    store.appendDiagnostic(d);
+
+    expect(store.diagnostics()).toEqual([d]);
+    expect(seen).toEqual([d]);
+  });
+
+  it("clear() empties diagnostics and fires the replace listener with []", () => {
+    const store = new SessionStore();
+    const replaceCalls: Diagnostic[][] = [];
+    store.onDiagnosticReplace((ds) => replaceCalls.push(ds));
+
+    store.appendDiagnostic({
+      ts: 1, category: "transport", severity: "warn",
+      code: "x", message: "y",
+    });
+    store.clear();
+
+    expect(store.diagnostics()).toEqual([]);
+    expect(replaceCalls.at(-1)).toEqual([]);
+  });
+
+  it("replaceDiagnostics swaps the array and fires the replace listener", () => {
+    const store = new SessionStore();
+    const replaceCalls: Diagnostic[][] = [];
+    store.onDiagnosticReplace((ds) => replaceCalls.push(ds));
+
+    const ds: Diagnostic[] = [{
+      ts: 2, category: "render", severity: "error",
+      code: "preview-threw", message: "boom",
+    }];
+    store.replaceDiagnostics(ds);
+
+    expect(store.diagnostics()).toEqual(ds);
+    expect(replaceCalls.at(-1)).toEqual(ds);
+  });
+
+  it("the unsubscribe fn from onDiagnosticAppend stops the listener", () => {
+    const store = new SessionStore();
+    const seen: Diagnostic[] = [];
+    const off = store.onDiagnosticAppend((d) => seen.push(d));
+    store.appendDiagnostic({ ts: 1, category: "schema", severity: "error", code: "a", message: "" });
+    off();
+    store.appendDiagnostic({ ts: 2, category: "schema", severity: "error", code: "b", message: "" });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.code).toBe("a");
+  });
+
+  it("the unsubscribe fn from onDiagnosticReplace stops the listener", () => {
+    const store = new SessionStore();
+    const calls: Diagnostic[][] = [];
+    const off = store.onDiagnosticReplace((ds) => calls.push(ds));
+    store.replaceDiagnostics([{ ts: 1, category: "render", severity: "warn", code: "x", message: "" }]);
+    off();
+    store.replaceDiagnostics([]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("replaceDiagnostics does NOT fire the diagnostic-append listener", () => {
+    const store = new SessionStore();
+    const appended: Diagnostic[] = [];
+    store.onDiagnosticAppend((d) => appended.push(d));
+    store.replaceDiagnostics([
+      { ts: 1, category: "transport", severity: "warn", code: "x", message: "" },
+    ]);
+    expect(appended).toEqual([]);
   });
 });

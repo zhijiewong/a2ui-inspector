@@ -51,6 +51,29 @@ describe("WebSocket upstream adapter", () => {
     handle.close();
   });
 
+  it("appends a schema diagnostic when an inbound message fails parsing", async () => {
+    const store = new SessionStore();
+    const handle = await connectWebSocketUpstream(`ws://localhost:${port}`, store, () => {});
+    const clientSocket = await nextSocket;
+    clientSocket.send(JSON.stringify({ not: "a-valid-a2ui-message" }));
+    await vi.waitFor(() => {
+      expect(store.diagnostics().some((d) => d.category === "schema" && d.code === "inbound-parse-failed")).toBe(true);
+    });
+    handle.close();
+  });
+
+  it("mirrors upstream close as a transport diagnostic", async () => {
+    const store = new SessionStore();
+    const handle = await connectWebSocketUpstream(`ws://localhost:${port}`, store, () => {});
+    await nextSocket;
+    handle.close();
+    await vi.waitFor(() => {
+      expect(store.diagnostics().some((d) =>
+        d.category === "transport" && d.code === "upstream-closed"
+      )).toBe(true);
+    });
+  });
+
   it("send() forwards an action to the upstream as JSON", async () => {
     const store = new SessionStore();
     const received: string[] = [];
