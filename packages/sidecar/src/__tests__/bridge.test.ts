@@ -54,7 +54,11 @@ describe("bridge", () => {
       action: { surfaceId: "main", componentId: "btn", kind: "tap" },
     }));
     await new Promise((r) => setTimeout(r, 30));
-    expect(events.some((e) => e.kind === "diagnostic")).toBe(true);
+    const diag = events.find((e) => e.kind === "diagnostic") as Extract<Event, { kind: "diagnostic" }> | undefined;
+    expect(diag).toBeDefined();
+    expect(diag!.diagnostic.category).toBe("transport");
+    expect(diag!.diagnostic.severity).toBe("warn");
+    expect(diag!.diagnostic.code).toBe("action-inject-no-upstream");
     expect(store.length).toBe(0);
     client.close();
   });
