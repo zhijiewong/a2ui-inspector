@@ -4,7 +4,7 @@ import { connectWebSocketUpstream } from "./adapters/websocket.js";
 import { connectSseUpstream } from "./adapters/sse.js";
 import { startWebSocketProxy, type RunningProxy } from "./adapters/proxy.js";
 import { loadFileIntoStore } from "./adapters/file.js";
-import { saveSession } from "./session/persistence.js";
+import { saveSession, saveSessionDiagnostics } from "./session/persistence.js";
 import type { SessionStore } from "./session/store.js";
 import type { UpstreamHandle } from "./adapters/types.js";
 
@@ -126,7 +126,14 @@ export function registerBridgeClient(socket: WebSocket, store: SessionStore): vo
       }
       case "saveSession": {
         try { await saveSession(cmd.path, [...store.entries()]); }
-        catch (err) { send(makeDiagnostic("error", "session-save-failed", String((err as Error).message))); }
+        catch (err) {
+          send(makeDiagnostic("error", "session-save-failed", String((err as Error).message)));
+          return;
+        }
+        try { await saveSessionDiagnostics(cmd.path, [...store.diagnostics()]); }
+        catch (err) {
+          send(makeDiagnostic("error", "diagnostics-save-failed", String((err as Error).message)));
+        }
         return;
       }
       case "scrubTo":

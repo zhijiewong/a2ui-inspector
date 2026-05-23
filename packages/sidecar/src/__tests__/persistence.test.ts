@@ -1,8 +1,14 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadSession, saveSession } from "../session/persistence.js";
+import {
+  diagnosticsPathFor,
+  loadSession,
+  loadSessionDiagnostics,
+  saveSession,
+  saveSessionDiagnostics,
+} from "../session/persistence.js";
 import type { SessionEntry } from "@a2ui-inspector/shared";
 import { SessionStore } from "../session/store.js";
 import { loadFileIntoStore } from "../adapters/file.js";
@@ -57,5 +63,40 @@ describe("file adapter", () => {
     await loadFileIntoStore(path, store);
     expect(store.length).toBe(2);
     expect(store.entries()[0]?.tick).toBe(0);
+  });
+});
+
+describe("persistence: diagnostics sibling file", () => {
+  it("diagnosticsPathFor swaps .jsonl for .diagnostics.jsonl", () => {
+    expect(diagnosticsPathFor("/tmp/foo.jsonl")).toBe("/tmp/foo.diagnostics.jsonl");
+    expect(diagnosticsPathFor("/tmp/foo")).toBe("/tmp/foo.diagnostics.jsonl");
+  });
+
+  it("save then load round-trips diagnostics", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "diag-"));
+    try {
+      const file = join(dir, "s.jsonl");
+      const ds = [
+        { ts: 1, category: "schema" as const, severity: "error" as const, code: "x", message: "y" },
+        { ts: 2, category: "render" as const, severity: "warn" as const, code: "a", message: "b", tick: 3 },
+      ];
+      await saveSessionDiagnostics(file, ds);
+      const round = await loadSessionDiagnostics(file);
+      expect(round).toEqual(ds);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("loadSessionDiagnostics returns [] when the sibling file does not exist", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "diag-"));
+    try {
+      const file = join(dir, "no-diags.jsonl");
+      writeFileSync(file, "");
+      const round = await loadSessionDiagnostics(file);
+      expect(round).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
