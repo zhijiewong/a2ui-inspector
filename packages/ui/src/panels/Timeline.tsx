@@ -6,6 +6,7 @@ import { useTimelineFilterStore } from "../store/timelineFilter.js";
 import { useFilterFocusStore } from "../store/filterFocus.js";
 import { useBookmarksStore } from "../store/bookmarks.js";
 import { useBookmarkEditorStore } from "../store/bookmarkEditor.js";
+import { useDiagnosticsStore } from "../store/diagnostics.js";
 import {
   ALL_DIRECTIONS,
   ALL_KINDS,
@@ -45,6 +46,8 @@ export function Timeline() {
   const bookmarksMap = useBookmarksStore((s) => s.bookmarks);
   const toggleBookmark = useBookmarksStore((s) => s.toggle);
   const openEditor = useBookmarkEditorStore((s) => s.openFor);
+
+  const byTick = useDiagnosticsStore((s) => s.byTick);
 
   const focusTick = useFilterFocusStore((s) => s.focusTick);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -160,6 +163,7 @@ export function Timeline() {
             return (
               <li
                 key={e.tick}
+                data-testid={`timeline-row-${e.tick}`}
                 onClick={() => setScrub(e.tick)}
                 className={
                   "group flex flex-col cursor-pointer border-l-2 px-2 py-1 " +
@@ -169,6 +173,13 @@ export function Timeline() {
                 }
               >
                 <div className="flex items-center">
+                  {byTick.has(e.tick) && (
+                    <span
+                      data-testid="diagnostic-dot"
+                      aria-label={`${byTick.get(e.tick)!.length} diagnostic(s) at tick ${e.tick}`}
+                      className="mr-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
+                    />
+                  )}
                   <span className="mr-2 text-ink-muted">#{e.tick}</span>
                   <span>{entryKind(e)}</span>
                   {e.direction === "client->agent" ? (
