@@ -1,4 +1,5 @@
 import { SessionEntrySchema, type SessionEntry } from "@a2ui-inspector/shared";
+import type { Bookmark } from "../store/bookmarks.js";
 
 /** Maximum size, in bytes, of the encoded fragment. Larger sessions fall back to file export. */
 export const MAX_FRAGMENT_BYTES = 256 * 1024;
@@ -14,6 +15,11 @@ export class ShareDecodeError extends Error {
 export type EncodeResult =
   | { ok: true; fragment: string }
   | { ok: false; reason: "too-large"; bytes: number };
+
+export interface DecodedSession {
+  entries: SessionEntry[];
+  bookmarks: Bookmark[];
+}
 
 function bytesToBase64url(bytes: Uint8Array): string {
   let bin = "";
@@ -40,15 +46,6 @@ function base64urlToBytes(s: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-/**
- * Pump `input` through a (de)compression transform stream and return the result.
- * Avoids `Blob.prototype.stream`, which jsdom does not implement.
- *
- * The writer-side promise is intentionally swallowed: when decompression fails
- * (corrupt input) both the writer and the readable side reject; the readable
- * rejection is what callers observe, so the writer rejection must not surface
- * as an unhandled rejection.
- */
 async function pumpThrough(
   input: Uint8Array<ArrayBuffer>,
   transform: CompressionStream | DecompressionStream,
@@ -76,12 +73,41 @@ export async function _gzipToFragment(text: string): Promise<string> {
   return bytesToBase64url(await gzip(text));
 }
 
-/** Encode a session into a URL-fragment-safe string. Over `maxBytes` -> too-large. */
+function isBookmarkLine(parsed: unknown): parsed is { bookmark: unknown } {
+  return (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "bookmark" in parsed &&
+    Object.keys(parsed as object).length === 1
+  );
+}
+
+function parseBookmark(raw: unknown): Bookmark {
+  if (
+    typeof raw === "object" &&
+    raw !== null &&
+    typeof (raw as { tick?: unknown }).tick === "number" &&
+    Number.isFinite((raw as { tick: number }).tick) &&
+    typeof (raw as { note?: unknown }).note === "string"
+  ) {
+    const r = raw as { tick: number; note: string };
+    return { tick: r.tick, note: r.note };
+  }
+  throw new ShareDecodeError("fragment contains a malformed bookmark");
+}
+
+/**
+ * Encode a session (and optional bookmarks) into a URL-fragment-safe string.
+ * Bookmarks are interleaved as `{ bookmark: ... }` lines in the JSONL stream.
+ */
 export async function encodeSession(
   entries: SessionEntry[],
+  bookmarks: Bookmark[] = [],
   maxBytes: number = MAX_FRAGMENT_BYTES,
 ): Promise<EncodeResult> {
-  const jsonl = entries.map((e) => JSON.stringify(e)).join("\n");
+  const entryLines = entries.map((e) => JSON.stringify(e));
+  const bookmarkLines = bookmarks.map((b) => JSON.stringify({ bookmark: b }));
+  const jsonl = [...entryLines, ...bookmarkLines].join("\n");
   const fragment = bytesToBase64url(await gzip(jsonl));
   if (fragment.length > maxBytes) {
     return { ok: false, reason: "too-large", bytes: fragment.length };
@@ -89,8 +115,12 @@ export async function encodeSession(
   return { ok: true, fragment };
 }
 
-/** Decode a `#share=` fragment back into validated session entries. */
-export async function decodeSession(fragment: string): Promise<SessionEntry[]> {
+/**
+ * Decode a `#share=` fragment back into `{ entries, bookmarks }`. Backwards-
+ * compatible with the pre-bookmarks codec: a fragment with no bookmark lines
+ * decodes with `bookmarks: []`.
+ */
+export async function decodeSession(fragment: string): Promise<DecodedSession> {
   const bytes = base64urlToBytes(fragment);
   let jsonl: string;
   try {
@@ -99,6 +129,7 @@ export async function decodeSession(fragment: string): Promise<SessionEntry[]> {
     throw new ShareDecodeError("fragment is not valid gzip data");
   }
   const entries: SessionEntry[] = [];
+  const bookmarks: Bookmark[] = [];
   for (const raw of jsonl.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
@@ -108,11 +139,15 @@ export async function decodeSession(fragment: string): Promise<SessionEntry[]> {
     } catch {
       throw new ShareDecodeError("fragment contains a malformed JSON line");
     }
+    if (isBookmarkLine(parsed)) {
+      bookmarks.push(parseBookmark(parsed.bookmark));
+      continue;
+    }
     const result = SessionEntrySchema.safeParse(parsed);
     if (!result.success) {
       throw new ShareDecodeError("fragment contains a non-conforming session entry");
     }
     entries.push(result.data);
   }
-  return entries;
+  return { entries, bookmarks };
 }

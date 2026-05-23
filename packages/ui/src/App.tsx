@@ -4,6 +4,8 @@ import { MainPaneTabs } from "./components/MainPaneTabs.js";
 import { ActionInjector } from "./components/ActionInjector.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { ShareDialog } from "./components/ShareDialog.js";
+import { BookmarkNotePopover } from "./components/BookmarkNotePopover.js";
+import { useBookmarksStore } from "./store/bookmarks.js";
 import { Timeline } from "./panels/Timeline.js";
 import { Preview } from "./panels/Preview.js";
 import { ComponentTree } from "./panels/ComponentTree.js";
@@ -44,7 +46,8 @@ export default function App() {
       const fragment = hash.slice(SHARE_PREFIX.length);
       decodeSession(fragment)
         .then((decoded) => {
-          useSessionStore.getState().loadEntries(decoded);
+          useSessionStore.getState().loadEntries(decoded.entries);
+          useBookmarksStore.getState().loadAll(decoded.bookmarks);
           useShareViewStore.getState().setSharedView(true);
         })
         .catch((err) => {
@@ -193,6 +196,7 @@ export default function App() {
       </main>
       <CommandPalette commands={paletteCommands} />
       <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} entries={entries} />
+      <BookmarkNotePopover />
     </div>
   );
 }

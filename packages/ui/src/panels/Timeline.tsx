@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
+import { Star } from "lucide-react";
 import { useSessionStore } from "../store/session.js";
 import { useTimelineStore } from "../store/timeline.js";
 import { useTimelineFilterStore } from "../store/timelineFilter.js";
 import { useFilterFocusStore } from "../store/filterFocus.js";
+import { useBookmarksStore } from "../store/bookmarks.js";
+import { useBookmarkEditorStore } from "../store/bookmarkEditor.js";
 import {
   ALL_DIRECTIONS,
   ALL_KINDS,
@@ -38,6 +41,10 @@ export function Timeline() {
   const setQuery = useTimelineFilterStore((s) => s.setQuery);
   const resetFilter = useTimelineFilterStore((s) => s.reset);
   const isDefault = useTimelineFilterStore((s) => s.isDefault());
+
+  const bookmarksMap = useBookmarksStore((s) => s.bookmarks);
+  const toggleBookmark = useBookmarksStore((s) => s.toggle);
+  const openEditor = useBookmarkEditorStore((s) => s.openFor);
 
   const focusTick = useFilterFocusStore((s) => s.focusTick);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -154,11 +161,44 @@ export function Timeline() {
               <li
                 key={e.tick}
                 onClick={() => setScrub(e.tick)}
-                className={"cursor-pointer border-l-2 px-2 py-1 " + (isActive ? "border-emerald-400 bg-surface text-emerald-300" : "border-transparent hover:bg-surface")}
+                className={
+                  "group flex flex-col cursor-pointer border-l-2 px-2 py-1 " +
+                  (isActive
+                    ? "border-emerald-400 bg-surface text-emerald-300"
+                    : "border-transparent hover:bg-surface")
+                }
               >
-                <span className="mr-2 text-ink-muted">#{e.tick}</span>
-                <span>{entryKind(e)}</span>
-                {e.direction === "client->agent" ? <span className="ml-1 text-amber-400">←</span> : null}
+                <div className="flex items-center">
+                  <span className="mr-2 text-ink-muted">#{e.tick}</span>
+                  <span>{entryKind(e)}</span>
+                  {e.direction === "client->agent" ? (
+                    <span className="ml-1 text-amber-400">←</span>
+                  ) : null}
+                  <button
+                    aria-label={`Bookmark tick ${e.tick}`}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      if (ev.shiftKey) openEditor(e.tick);
+                      else toggleBookmark(e.tick);
+                    }}
+                    className={
+                      "ml-auto rounded p-0.5 " +
+                      (bookmarksMap.has(e.tick)
+                        ? "text-amber-400"
+                        : "text-ink-faint opacity-0 group-hover:opacity-100 hover:text-ink")
+                    }
+                  >
+                    <Star
+                      size={12}
+                      fill={bookmarksMap.has(e.tick) ? "currentColor" : "none"}
+                    />
+                  </button>
+                </div>
+                {bookmarksMap.get(e.tick)?.note ? (
+                  <div className="mono ml-4 text-[10px] text-ink-muted truncate">
+                    {bookmarksMap.get(e.tick)!.note}
+                  </div>
+                ) : null}
               </li>
             );
           })

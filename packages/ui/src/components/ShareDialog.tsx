@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SessionEntry } from "@a2ui-inspector/shared";
 import { encodeSession, MAX_FRAGMENT_BYTES } from "../share/codec.js";
+import { useBookmarksStore } from "../store/bookmarks.js";
 
 const SHARE_BASE_URL =
   (import.meta.env.VITE_SHARE_BASE_URL as string | undefined) ??
@@ -22,6 +23,7 @@ interface ShareDialogProps {
 export function ShareDialog({ open, onClose, entries }: ShareDialogProps) {
   const [state, setState] = useState<DialogState>({ kind: "encoding" });
   const [copied, setCopied] = useState(false);
+  const bookmarksMap = useBookmarksStore((s) => s.bookmarks);
 
   useEffect(() => {
     if (!open) return;
@@ -32,7 +34,7 @@ export function ShareDialog({ open, onClose, entries }: ShareDialogProps) {
     }
     setState({ kind: "encoding" });
     let cancelled = false;
-    encodeSession(entries)
+    encodeSession(entries, Array.from(bookmarksMap.values()))
       .then((res) => {
         if (cancelled) return;
         if (res.ok) setState({ kind: "ready", link: `${SHARE_BASE_URL}#share=${res.fragment}` });
@@ -44,7 +46,7 @@ export function ShareDialog({ open, onClose, entries }: ShareDialogProps) {
     return () => {
       cancelled = true;
     };
-  }, [open, entries]);
+  }, [open, entries, bookmarksMap]);
 
   if (!open) return null;
 

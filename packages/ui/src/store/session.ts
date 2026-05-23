@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Event, SessionEntry } from "@a2ui-inspector/shared";
+import { useBookmarksStore } from "./bookmarks.js";
 
 interface SessionState {
   entries: SessionEntry[];
@@ -29,11 +30,18 @@ export const useSessionStore = create<SessionState>((set) => ({
         case "upstreamStatus":
           return { upstreamStatus: e.status, upstreamDetail: e.detail };
         case "sessionLoaded":
+          useBookmarksStore.getState().clear();
           return { entries: [], diagnostics: s.diagnostics };
         case "diagnostic":
           return { diagnostics: [...s.diagnostics, { level: e.level, message: e.message, ts: Date.now() }] };
       }
     }),
-  loadEntries: (entries) => set({ entries }),
-  reset: () => set({ entries: [], upstreamStatus: "idle", upstreamDetail: undefined, diagnostics: [] }),
+  loadEntries: (entries) => {
+    useBookmarksStore.getState().clear();
+    set({ entries });
+  },
+  reset: () => {
+    useBookmarksStore.getState().clear();
+    set({ entries: [], upstreamStatus: "idle", upstreamDetail: undefined, diagnostics: [] });
+  },
 }));
